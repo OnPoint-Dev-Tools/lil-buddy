@@ -1,0 +1,116 @@
+# Packaging Lil Buddy for Users
+
+Lil Buddy is a Tauri v2 desktop app. The simple path is to build installers on each operating system you want to support.
+
+## Recommended release artifacts
+
+For a clean Developer Preview release, publish these from GitHub Releases:
+
+```txt
+Windows: Lil-Buddy_0.1.0_x64-setup.exe  (NSIS installer)
+Windows: Lil-Buddy_0.1.0_x64_en-US.msi  (optional MSI)
+macOS:   Lil-Buddy_0.1.0_aarch64.dmg    (Apple Silicon)
+macOS:   Lil-Buddy_0.1.0_x64.dmg        (Intel)
+Linux:   Lil-Buddy_0.1.0_amd64.AppImage
+Linux:   Lil-Buddy_0.1.0_amd64.deb
+Linux:   Lil-Buddy_0.1.0_x86_64.rpm
+Checksums: SHA256SUMS.txt
+```
+
+## Local build
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Build the desktop app:
+
+```bash
+npm run build:desktop
+```
+
+or directly:
+
+```bash
+npm run tauri build
+```
+
+The bundled installers will be under:
+
+```txt
+src-tauri/target/release/bundle/
+```
+
+## Platform notes
+
+### Windows
+
+Build on Windows for the smoothest result.
+
+Expected output folders:
+
+```txt
+src-tauri/target/release/bundle/nsis/
+src-tauri/target/release/bundle/msi/
+```
+
+For users, the easiest file is usually the NSIS setup `.exe`.
+
+### macOS
+
+Build on macOS. For public users, signed and notarized `.dmg` releases are best.
+
+Expected output folders:
+
+```txt
+src-tauri/target/release/bundle/dmg/
+src-tauri/target/release/bundle/macos/
+```
+
+### Linux
+
+Build on Linux.
+
+Expected output folders:
+
+```txt
+src-tauri/target/release/bundle/appimage/
+src-tauri/target/release/bundle/deb/
+src-tauri/target/release/bundle/rpm/
+```
+
+For broad testing, AppImage is the easiest single file. `.deb` is good for Debian/Ubuntu users. `.rpm` is good for Fedora/openSUSE users.
+
+## Checksums
+
+After building, generate checksums from the folder where you collect release files:
+
+```bash
+sha256sum * > SHA256SUMS.txt
+```
+
+## Signing
+
+Unsigned Developer Preview builds are acceptable for early testers, but signed builds are better for trust.
+
+- Windows: code signing reduces SmartScreen friction.
+- macOS: signing and notarization reduce Gatekeeper friction.
+- Linux: publish checksums first; package repository signing can come later.
+
+See `docs/CODE_SIGNING_NOTES.md`.
+
+## Release wording
+
+Suggested GitHub Release title:
+
+```txt
+Lil Buddy v0.1.0 Developer Preview
+```
+
+Suggested warning:
+
+```txt
+This is an experimental Developer Preview. Unsigned builds may show operating system warnings. Please review the privacy and security notes before connecting providers, Telegram, or workspaces.
+```

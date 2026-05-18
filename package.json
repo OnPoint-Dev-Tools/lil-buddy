@@ -1,0 +1,35 @@
+{
+  "name": "lil-buddy",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "author": "CjLogic",
+  "scripts": {
+    "dev": "vite --port 1437",
+    "build": "tsc && vite build",
+    "tauri": "tauri",
+    "tauri:hyprland": "WEBKIT_DISABLE_DMABUF_RENDERER=1 GDK_BACKEND=x11 tauri dev",
+    "tauri:wayland-safe": "WEBKIT_DISABLE_DMABUF_RENDERER=1 tauri dev",
+    "tauri:x11": "GDK_BACKEND=x11 tauri dev",
+    "build:desktop": "npm run build && tauri build",
+    "dev:desktop": "tauri dev",
+    "package": "npm run build:desktop",
+    "package:debug": "npm run tauri build -- --debug"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^4.5.4",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.0.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0"
+  },
+  "license": "MIT"
+}

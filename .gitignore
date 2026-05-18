@@ -1,0 +1,29 @@
+# Lil Buddy local secrets / user data
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+secrets/
+.local/
+*.log
+# Telegram / gateway local config exports
+telegram-token*
+bot-token*
+webhook-secret*
+# Tauri / Node / Rust build artifacts
+node_modules/
+dist/
+src-tauri/target/
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+plans/*
+docs/POSITIONING.md
+.pi/
