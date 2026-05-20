@@ -1,5 +1,5 @@
 
-use image::imageops::FilterType;
+use image::{imageops::FilterType, RgbaImage};
 use serde::Deserialize;
 use std::{
     io::{self, BufRead, Write},
@@ -15,11 +15,12 @@ use winit::{
     window::{WindowBuilder, WindowLevel},
 };
 
-const PET_W: u32 = 180;
+const PET_W: u32 = 340;
 const PET_H: u32 = 230;
 const DEFAULT_SPRITE_SIZE: u32 = 120;
 const DEFAULT_SPRITE_Y: i32 = 88;
-const IDLE_WALK_INTERVAL_SECS: u64 = 8;
+const IDLE_WALK_INTERVAL_MIN_SECS: u64 = 7;
+const IDLE_WALK_INTERVAL_MAX_SECS: u64 = 11;
 
 #[derive(Debug, Clone, Copy)]
 struct CompanionScale {
@@ -30,7 +31,7 @@ struct CompanionScale {
 impl CompanionScale {
     fn from_size(value: &str) -> Self {
         match value.trim() {
-            "small" => Self { sprite_size: 120, sprite_y: 50 },
+            "small" => Self { sprite_size: 96, sprite_y: 112 },
             "medium" => Self { sprite_size: DEFAULT_SPRITE_SIZE, sprite_y: DEFAULT_SPRITE_Y },
             "large" => Self { sprite_size: 170, sprite_y: 60 },
             _ => Self { sprite_size: DEFAULT_SPRITE_SIZE, sprite_y: DEFAULT_SPRITE_Y },
@@ -234,11 +235,11 @@ macro_rules! companion_bank {
                 companion_png!($base, "hello/01.png"), companion_png!($base, "hello/02.png"), companion_png!($base, "hello/03.png"),
                 companion_png!($base, "hello/04.png"), companion_png!($base, "hello/05.png"), companion_png!($base, "hello/06.png"),
             ]),
-            walk_right: load_frames(&[
+            walk_right: load_walk_frames(&[
                 companion_png!($base, "walk-right/01.png"), companion_png!($base, "walk-right/02.png"), companion_png!($base, "walk-right/03.png"), companion_png!($base, "walk-right/04.png"),
                 companion_png!($base, "walk-right/05.png"), companion_png!($base, "walk-right/06.png"), companion_png!($base, "walk-right/07.png"), companion_png!($base, "walk-right/08.png"),
             ]),
-            walk_left: load_frames(&[
+            walk_left: load_walk_frames(&[
                 companion_png!($base, "walk-left/01.png"), companion_png!($base, "walk-left/02.png"), companion_png!($base, "walk-left/03.png"), companion_png!($base, "walk-left/04.png"),
                 companion_png!($base, "walk-left/05.png"), companion_png!($base, "walk-left/06.png"), companion_png!($base, "walk-left/07.png"), companion_png!($base, "walk-left/08.png"),
             ]),
@@ -266,6 +267,29 @@ macro_rules! companion_bank {
     };
 }
 
+fn alpha_bounds(image: &RgbaImage) -> Option<(u32, u32, u32, u32)> {
+    let (width, height) = image.dimensions();
+    let mut min_x = width;
+    let mut min_y = height;
+    let mut max_x = 0;
+    let mut max_y = 0;
+    let mut found = false;
+
+    for y in 0..height {
+        for x in 0..width {
+            if image.get_pixel(x, y)[3] > 0 {
+                min_x = min_x.min(x);
+                min_y = min_y.min(y);
+                max_x = max_x.max(x);
+                max_y = max_y.max(y);
+                found = true;
+            }
+        }
+    }
+
+    found.then_some((min_x, min_y, max_x, max_y))
+}
+
 fn load_frame(bytes: &[u8]) -> Frame {
     let image = image::load_from_memory(bytes)
         .expect("companion frame should decode")
@@ -279,8 +303,40 @@ fn load_frame(bytes: &[u8]) -> Frame {
     }
 }
 
+fn load_walk_frame(bytes: &[u8]) -> Frame {
+    let image = image::load_from_memory(bytes)
+        .expect("companion frame should decode")
+        .to_rgba8();
+
+    let cropped = if let Some((min_x, min_y, max_x, max_y)) = alpha_bounds(&image) {
+        image::imageops::crop_imm(&image, min_x, min_y, max_x - min_x + 1, max_y - min_y + 1).to_image()
+    } else {
+        image
+    };
+
+    let walk_target = ((DEFAULT_SPRITE_SIZE as f32) * 0.84).round() as u32;
+    let fitted = image::DynamicImage::ImageRgba8(cropped)
+        .resize(walk_target, walk_target, FilterType::Lanczos3)
+        .to_rgba8();
+
+    let mut canvas = RgbaImage::new(DEFAULT_SPRITE_SIZE, DEFAULT_SPRITE_SIZE);
+    let x = ((DEFAULT_SPRITE_SIZE - fitted.width()) / 2) as i64;
+    let y = (DEFAULT_SPRITE_SIZE.saturating_sub(fitted.height()).saturating_sub(4)) as i64;
+    image::imageops::overlay(&mut canvas, &fitted, x, y);
+
+    Frame {
+        pixels: canvas.into_raw(),
+        width: DEFAULT_SPRITE_SIZE,
+        height: DEFAULT_SPRITE_SIZE,
+    }
+}
+
 fn load_frames(items: &[&[u8]]) -> Vec<Frame> {
     items.iter().map(|bytes| load_frame(bytes)).collect()
+}
+
+fn load_walk_frames(items: &[&[u8]]) -> Vec<Frame> {
+    items.iter().map(|bytes| load_walk_frame(bytes)).collect()
 }
 
 fn should_flip_walk_bank(character_id: &str) -> bool {
@@ -368,7 +424,7 @@ fn run_idle_behavior(
     if is_walk_pose(&idle_pose) {
         let direction = runtime.next_walk_direction;
         runtime.next_walk_direction = -runtime.next_walk_direction;
-        start_screen_walk(runtime, window, start_x, start_y, direction, 210, 3200, true, companion_scale);
+        start_screen_walk(runtime, window, start_x, start_y, direction, 210, 4000, true, companion_scale);
     } else {
         runtime.mode = RuntimeMode::Idle;
         runtime.requested_mood = Mood::Idle;
@@ -473,11 +529,11 @@ fn pose_frame<'a>(bank: &'a FrameBank, pose: &str) -> &'a Frame {
 
 fn bubble_label_for_pose(pose: &str) -> Option<&'static str> {
     match pose {
-        "working" | "walk-left" | "walk-right" => Some("WORK"),
-        "thinking" => Some("THINK"),
+        "working" | "walk-left" | "walk-right" => Some("WORKING"),
+        "thinking" => Some("THINKING"),
         "command" => Some("CMD"),
-        "done" => Some("DONE"),
-        "error" => Some("ERR"),
+        "done" => Some("IM DONE"),
+        "error" => Some("ERROR"),
         "hello" | "intro" => Some("HI"),
         _ => None,
     }
@@ -485,11 +541,11 @@ fn bubble_label_for_pose(pose: &str) -> Option<&'static str> {
 
 fn bubble_label_for_mood(mood: Mood) -> Option<&'static str> {
     match mood {
-        Mood::Working | Mood::WalkLeft | Mood::WalkRight => Some("WORK"),
-        Mood::Thinking => Some("THINK"),
+        Mood::Working | Mood::WalkLeft | Mood::WalkRight => Some("WORKING"),
+        Mood::Thinking => Some("THINKING"),
         Mood::Command => Some("CMD"),
-        Mood::Done => Some("DONE"),
-        Mood::Error => Some("ERR"),
+        Mood::Done => Some("IM DONE"),
+        Mood::Error => Some("ERROR"),
         Mood::Hello => Some("HI"),
         Mood::Idle => None,
     }
@@ -651,10 +707,18 @@ fn quad_vertices_rect(x: i32, y: i32, w: i32, h: i32) -> [Vertex; 4] {
     ]
 }
 
+fn next_idle_walk_delay_secs(runtime: &Runtime) -> u64 {
+    if runtime.next_walk_direction > 0 {
+        IDLE_WALK_INTERVAL_MIN_SECS
+    } else {
+        IDLE_WALK_INTERVAL_MAX_SECS
+    }
+}
+
 fn schedule_idle_times(runtime: &mut Runtime) {
     let now = Instant::now();
     runtime.next_idle_wave_at = now + Duration::from_secs(15);
-    runtime.next_idle_walk_at = now + Duration::from_secs(IDLE_WALK_INTERVAL_SECS);
+    runtime.next_idle_walk_at = now + Duration::from_secs(next_idle_walk_delay_secs(runtime));
     runtime.next_blink_at = now + Duration::from_millis(if runtime.blink_interval_flip { 6500 } else { 4200 });
     runtime.blink_interval_flip = !runtime.blink_interval_flip;
     runtime.blink_until = None;
@@ -687,35 +751,45 @@ fn start_screen_walk(
         .unwrap_or(PhysicalPosition::new(start_x, start_y));
 
     let mut direction = direction_sign.signum().clamp(-1, 1);
-    let start_offset_x = runtime.sprite_offset_x.clamp(-companion_scale.walk_bound_x(), companion_scale.walk_bound_x());
-    let requested_distance = distance.clamp(72, companion_scale.walk_bound_x());
+    let walk_bound_x = companion_scale.walk_bound_x().max(0);
+    if walk_bound_x == 0 {
+        return;
+    }
+
+    let start_offset_x = runtime.sprite_offset_x.clamp(-walk_bound_x, walk_bound_x);
+    let min_distance = ((walk_bound_x * 2) / 3).clamp(18, 56);
+    let requested_distance = distance.abs().clamp(min_distance, walk_bound_x);
 
     // Bounce before hitting the transparent viewport edge. This makes the
     // movement visible on Wayland/Hyprland even when set_outer_position is ignored.
-    if start_offset_x + direction * requested_distance > companion_scale.walk_bound_x() {
+    if start_offset_x + direction * requested_distance > walk_bound_x {
         direction = -1;
-    } else if start_offset_x + direction * requested_distance < -companion_scale.walk_bound_x() {
+    } else if start_offset_x + direction * requested_distance < -walk_bound_x {
         direction = 1;
     }
 
-    let target_offset_x = (start_offset_x + direction * requested_distance).clamp(-companion_scale.walk_bound_x(), companion_scale.walk_bound_x());
+    let target_offset_x = (start_offset_x + direction * requested_distance).clamp(-walk_bound_x, walk_bound_x);
+    let actual_distance = (target_offset_x - start_offset_x).abs().max(1);
+    let scaled_duration_ms = (700 + actual_distance as u64 * 26).clamp(900, 2600);
+    let requested_duration_ms = duration_ms.clamp(900, 4200);
+    let effective_duration_ms = requested_duration_ms.max(scaled_duration_ms);
 
     runtime.mode = RuntimeMode::Working;
     runtime.static_pose = None;
     runtime.timed_clip = None;
     runtime.blink_until = None;
     set_mood(runtime, if direction < 0 { Mood::WalkRight } else { Mood::WalkLeft });
-    runtime.bubble_label = Some(if return_to_idle { "I NEED WORK" } else { "WORK" }.to_string());
+    runtime.bubble_label = Some(if return_to_idle { "I NEED WORK" } else { "WORKING" }.to_string());
 
     runtime.walk = Some(WalkState {
         started_at: Instant::now(),
-        duration: Duration::from_millis(duration_ms.clamp(1200, 5200)),
+        duration: Duration::from_millis(effective_duration_ms),
         start_x: current.x,
         y: current.y,
         start_offset_x,
         target_offset_x,
         direction,
-        distance: (target_offset_x - start_offset_x).abs().max(1),
+        distance: actual_distance,
         return_to_idle,
     });
 }
@@ -1109,7 +1183,7 @@ pub fn run_from_args() {
         }),
         static_pose: Some("intro".to_string()),
         next_idle_wave_at: now + Duration::from_secs(15),
-        next_idle_walk_at: now + Duration::from_secs(IDLE_WALK_INTERVAL_SECS),
+        next_idle_walk_at: now + Duration::from_secs(IDLE_WALK_INTERVAL_MIN_SECS),
         next_blink_at: now + Duration::from_millis(4200),
         blink_until: None,
         blink_interval_flip: false,
@@ -1270,7 +1344,7 @@ pub fn run_from_args() {
                         if now >= runtime.next_idle_walk_at {
                             run_idle_behavior(&mut runtime, &window, start_x, start_y, companion_scale);
                             runtime.next_idle_wave_at = now + Duration::from_secs(15);
-                            runtime.next_idle_walk_at = now + Duration::from_secs(IDLE_WALK_INTERVAL_SECS);
+                            runtime.next_idle_walk_at = now + Duration::from_secs(next_idle_walk_delay_secs(&runtime));
                         }
                     }
 
@@ -1292,7 +1366,7 @@ pub fn run_from_args() {
 
                             if walk.return_to_idle {
                                 reset_to_idle_system(&mut runtime);
-                                runtime.next_idle_walk_at = Instant::now() + Duration::from_secs(IDLE_WALK_INTERVAL_SECS);
+                                runtime.next_idle_walk_at = Instant::now() + Duration::from_secs(next_idle_walk_delay_secs(&runtime));
                                 runtime.walk = None;
                             } else {
                                 runtime.walk = None;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   hideChatWindow,
   detectProviders,
@@ -45,6 +45,9 @@ import { OnboardingModal } from './OnboardingModal';
 import { ExpertsPanel, expertGreeting, expertPromptPrefix, loadExperts, selectedExpert, type LilExpert } from './ExpertsPanel';
 import lilBuddyLogo from '../../assets/branding/lil-buddy-logo-header.png';
 import {
+   MoreHorizontal,
+   NotepadTextDashed,
+   Paperclip,
    Settings,
    SendHorizontal,
 } from 'lucide-react';
@@ -189,6 +192,8 @@ export function ChatWindow() {
   const [chatSessions, setChatSessions] = useState<ExpertChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [deletedSessionIds, setDeletedSessionIds] = useState<Set<string>>(() => new Set());
+  const [bottomMenuOpen, setBottomMenuOpen] = useState(false);
+  const bottomMenuRef = useRef<HTMLDivElement | null>(null);
 
 
   const {
@@ -224,6 +229,15 @@ export function ChatWindow() {
     setRunning,
     seedBoot,
   } = useAppStore();
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!bottomMenuRef.current?.contains(event.target as Node)) setBottomMenuOpen(false);
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, []);
 
   useEffect(() => {
     if (messages.length === 0) seedBoot();
@@ -933,19 +947,16 @@ export function ChatWindow() {
         <div className="lm-card-topline" />
 
         <div className="lm-header">
+          <div className="lm-header-top-actions">
+            <button type="button" className="lm-icon-btn" aria-label="Open settings" onClick={() => setSettingsOpen(true)}>
+              <Settings />
+            </button>
+            <button type="button" className="lm-icon-btn" aria-label="Close chat" onClick={closeChatSafely}>×</button>
+          </div>
+
           <div className="lm-header-brand">
             <img className="lm-app-logo" src={lilBuddyLogo} alt="Lil Buddy" draggable={false} />
             <ExpertsPanel selectedId={activeExpert?.id ?? null} onSelect={(expert) => { selectExpert(expert).catch(() => {}); }} />
-          </div>
-
-          <div className="lm-header-actions">
-            <button className="lm-header-workspace-btn" onClick={() => setWorkspaceOpen(true)}>
-              Workspace Info
-              <span>{workspaceDiff?.changed_files.length ?? 0}</span>
-            </button>
-            <button className="lm-icon-btn" onClick={() => setCommandPaletteOpen(true)}>⌘</button>
-            <div className="settings-btn lm-icon-btn" onClick={() => setSettingsOpen(true)}><Settings/></div>
-            <button className="lm-icon-btn" onClick={closeChatSafely}>×</button>
           </div>
         </div>
 
@@ -1013,9 +1024,49 @@ export function ChatWindow() {
             onClick={chooseWorkspace}
             title={workspace?.path ? `Workspace: ${workspace.path}` : 'Choose workspace folder'}
           >
-            <span>⌂</span>
+            <span><Paperclip /></span>
             <strong>{workspace?.path ? workspace.path.split('/').filter(Boolean).slice(-1)[0] : 'Folder'}</strong>
           </button>
+
+          <div className="lm-bottom-menu-wrap" ref={bottomMenuRef}>
+            <button
+              type="button"
+              className="lm-icon-btn lm-bottom-menu-btn"
+              aria-label="Open workspace and quick actions"
+              onClick={() => setBottomMenuOpen((open) => !open)}
+            >
+              <MoreHorizontal />
+            </button>
+
+            {bottomMenuOpen ? (
+              <div className="lm-bottom-menu-popover">
+                <button
+                  type="button"
+                  className="lm-bottom-menu-item"
+                  onClick={() => {
+                    setWorkspaceOpen(true);
+                    setBottomMenuOpen(false);
+                  }}
+                >
+                  <span className="lm-bottom-menu-item-icon">⌂</span>
+                  <strong>Workspace info</strong>
+                  <small>{workspaceDiff?.changed_files.length ?? 0} changed</small>
+                </button>
+                <button
+                  type="button"
+                  className="lm-bottom-menu-item"
+                  onClick={() => {
+                    setCommandPaletteOpen(true);
+                    setBottomMenuOpen(false);
+                  }}
+                >
+                  <span className="lm-bottom-menu-item-icon"><NotepadTextDashed /></span>
+                  <strong>Quick actions</strong>
+                  <small>Open command palette</small>
+                </button>
+              </div>
+            ) : null}
+          </div>
 
           <textarea
             className="lm-input lm-chat-textarea"

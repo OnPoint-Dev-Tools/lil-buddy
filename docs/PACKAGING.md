@@ -49,6 +49,8 @@ src-tauri/target/release/bundle/
 
 Build on Windows for the smoothest result.
 
+Building Windows installers from Linux is not the recommended path for this Tauri app. In practice, you usually want a real Windows machine or a GitHub Actions Windows runner for `.exe` / `.msi` output.
+
 Expected output folders:
 
 ```txt
@@ -82,6 +84,14 @@ src-tauri/target/release/bundle/rpm/
 ```
 
 For broad testing, AppImage is the easiest single file. `.deb` is good for Debian/Ubuntu users. `.rpm` is good for Fedora/openSUSE users.
+
+If AppImage packaging fails on Arch or another rolling distro because the bundled `linuxdeploy` tool cannot strip newer ELF files, use:
+
+```bash
+npm run package:linux:appimage
+```
+
+That script lets Tauri stage the AppDir, then repacks it with `linuxdeploy-plugin-appimage`, which avoids the failing strip step.
 
 ## Checksums
 
