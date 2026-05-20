@@ -26,12 +26,6 @@ fn active_child() -> &'static Mutex<Option<Child>> {
     ACTIVE_CHILD.get_or_init(|| Mutex::new(None))
 }
 
-fn clear_active_child() {
-    if let Ok(mut active) = active_child().lock() {
-        *active = None;
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum AiCliProvider {
     OpenCodeGo,
@@ -44,27 +38,6 @@ impl AiCliProvider {
             "opencode-go" => Ok(Self::OpenCodeGo),
             "claude" => Ok(Self::Claude),
             other => Err(format!("unsupported provider: {}", other)),
-        }
-    }
-
-    pub fn id(&self) -> &'static str {
-        match self {
-            Self::OpenCodeGo => "opencode-go",
-            Self::Claude => "claude",
-        }
-    }
-
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::OpenCodeGo => "OpenCode",
-            Self::Claude => "Claude Code",
-        }
-    }
-
-    pub fn binary(&self, settings: &AppSettings) -> String {
-        match self {
-            Self::OpenCodeGo => settings.opencode_command.clone(),
-            Self::Claude => "claude".to_string(),
         }
     }
 }
@@ -97,7 +70,6 @@ impl AiCliContext {
 }
 
 pub trait AiCliAdapter {
-    fn provider(&self) -> AiCliProvider;
     fn build_invocation(&self, context: &AiCliContext) -> Result<ProviderInvocation, String>;
 }
 
@@ -105,10 +77,6 @@ pub struct OpenCodeGoAdapter;
 pub struct ClaudeAdapter;
 
 impl AiCliAdapter for OpenCodeGoAdapter {
-    fn provider(&self) -> AiCliProvider {
-        AiCliProvider::OpenCodeGo
-    }
-
     fn build_invocation(&self, context: &AiCliContext) -> Result<ProviderInvocation, String> {
         opencode_go::build(
             &context.prompt,
@@ -122,10 +90,6 @@ impl AiCliAdapter for OpenCodeGoAdapter {
 }
 
 impl AiCliAdapter for ClaudeAdapter {
-    fn provider(&self) -> AiCliProvider {
-        AiCliProvider::Claude
-    }
-
     fn build_invocation(&self, context: &AiCliContext) -> Result<ProviderInvocation, String> {
         claude::build(
             &context.prompt,
@@ -555,29 +519,6 @@ fn workspace_dir_from_invocation(invocation: &ProviderInvocation) -> Option<Stri
 
 pub fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace("'", "'\\''"))
-}
-
-pub fn preview_command(command: &str, args: &[String]) -> String {
-    if args.is_empty() {
-        return command.to_string();
-    }
-
-    format!(
-        "{} {}",
-        command,
-        args.iter()
-            .map(|arg| shell_quote_if_needed(arg))
-            .collect::<Vec<_>>()
-            .join(" ")
-    )
-}
-
-fn shell_quote_if_needed(value: &str) -> String {
-    if value.chars().any(|c| c.is_whitespace() || c == '\'' || c == '"' || c == '$') {
-        shell_quote(value)
-    } else {
-        value.to_string()
-    }
 }
 
 fn shell_escape_for_sh(value: &str) -> String {

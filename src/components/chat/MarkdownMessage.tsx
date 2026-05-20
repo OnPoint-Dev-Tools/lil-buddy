@@ -30,7 +30,10 @@ function cleanDisplayText(value: string) {
 
 function escapeHtml(value: string) {
   const cleaned = cleanDisplayText(value);
-  return cleaned.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  return cleaned
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 function renderInline(value: string) {

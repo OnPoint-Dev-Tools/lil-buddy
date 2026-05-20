@@ -32,11 +32,16 @@ export type AppSettings = {
   telegram_gateway_enabled: boolean;
   telegram_gateway_mode: string;
   telegram_bot_token: string;
+  telegram_bot_token_from_env: boolean;
   telegram_webhook_public_url: string;
+  telegram_webhook_public_url_from_env: boolean;
   telegram_webhook_local_port: number;
   telegram_webhook_path_secret: string;
+  telegram_webhook_path_secret_from_env: boolean;
   telegram_webhook_secret: string;
+  telegram_webhook_secret_from_env: boolean;
   telegram_allowed_chat_id: string | null;
+  telegram_allowed_chat_id_from_env: boolean;
   telegram_active_expert_id: string | null;
   telegram_active_expert_name: string | null;
   telegram_active_expert_role: string | null;
@@ -365,24 +370,23 @@ export async function restoreMonitorAwarePositions() {
 }
 
 
-export async function saveTelegramGatewaySettings(
-  gatewayMode: string,
-  botToken: string,
-  allowedChatId: string,
-  webhookPublicUrl: string,
-  webhookLocalPort: number,
-  webhookPathSecret: string,
-  webhookSecret: string,
-) {
-  return invoke('save_telegram_gateway_settings', {
-    gatewayMode,
-    botToken,
-    allowedChatId,
-    webhookPublicUrl,
-    webhookLocalPort,
-    webhookPathSecret,
-    webhookSecret,
-  });
+export type TelegramGatewaySettingsPayload = {
+  gatewayMode: string;
+  botToken: string;
+  botTokenFromEnv: boolean;
+  allowedChatId: string;
+  allowedChatIdFromEnv: boolean;
+  webhookPublicUrl: string;
+  webhookPublicUrlFromEnv: boolean;
+  webhookLocalPort: number;
+  webhookPathSecret: string;
+  webhookPathSecretFromEnv: boolean;
+  webhookSecret: string;
+  webhookSecretFromEnv: boolean;
+};
+
+export async function saveTelegramGatewaySettings(payload: TelegramGatewaySettingsPayload) {
+  return invoke('save_telegram_gateway_settings', { payload });
 }
 
 export async function saveTelegramActiveExpert(

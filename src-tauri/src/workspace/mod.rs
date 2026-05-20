@@ -91,10 +91,6 @@ pub fn detect_workspace_with_fallback(path: Option<String>, fallback: Option<Str
     detect_workspace_at(path)
 }
 
-pub fn detect_workspace() -> WorkspaceInfo {
-    detect_workspace_at(None)
-}
-
 pub fn get_workspace_diff_at(path: Option<String>) -> WorkspaceDiff {
     // Never diff the OS home fallback. Diffs only run after the user explicitly selects a workspace.
     if path.as_ref().map(|value| value.trim().is_empty()).unwrap_or(true) {

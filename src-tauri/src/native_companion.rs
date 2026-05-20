@@ -89,7 +89,7 @@ impl Mood {
         matches!(self, Self::Idle | Self::WalkLeft | Self::WalkRight | Self::Thinking | Self::Working)
     }
 
-    fn frames<'a>(self, bank: &'a FrameBank) -> &'a [Frame] {
+    fn frames(self, bank: &FrameBank) -> &[Frame] {
         match self {
             Self::Hello => &bank.hello,
             Self::Idle => &bank.idle_open,
@@ -167,7 +167,6 @@ struct WalkState {
 }
 
 struct TimedClip {
-    mood: Mood,
     started_at: Instant,
     duration: Duration,
     return_to: Mood,
@@ -339,7 +338,7 @@ fn send_ipc(port: u16, line: &str) {
 fn spawn_stdin_reader(tx: mpsc::Sender<NativeCommand>) {
     std::thread::spawn(move || {
         let stdin = io::stdin();
-        for line in stdin.lock().lines().flatten() {
+        for line in stdin.lock().lines().map_while(Result::ok) {
             match serde_json::from_str::<NativeCommand>(&line) {
                 Ok(command) => {
                     let should_quit = matches!(command, NativeCommand::Quit);
@@ -398,14 +397,6 @@ fn set_mood(runtime: &mut Runtime, mood: Mood) {
     runtime.last_frame_at = Instant::now();
 }
 
-fn set_static_pose(runtime: &mut Runtime, pose: String) {
-    runtime.bubble_label = bubble_label_for_pose(&pose).map(str::to_string);
-    runtime.static_pose = Some(pose);
-    runtime.timed_clip = None;
-    runtime.frame_index = 0;
-    runtime.last_frame_at = Instant::now();
-}
-
 fn is_walk_pose(pose: &str) -> bool {
     pose == "walk-left" || pose == "walk-right"
 }
@@ -418,7 +409,6 @@ fn set_timed_static_pose(runtime: &mut Runtime, pose: String, duration_ms: u64) 
     runtime.bubble_label = bubble_label_for_pose(&pose).map(str::to_string);
     runtime.static_pose = Some(pose);
     runtime.timed_clip = Some(TimedClip {
-        mood: Mood::Idle,
         started_at: Instant::now(),
         duration: Duration::from_millis(duration_ms),
         return_to: Mood::Idle,
@@ -476,8 +466,8 @@ fn pose_frame<'a>(bank: &'a FrameBank, pose: &str) -> &'a Frame {
         "command" => bank.command.get(2).unwrap_or(&bank.command[0]),
         "done" => bank.done.get(2).unwrap_or(&bank.done[0]),
         "error" => bank.error.get(2).unwrap_or(&bank.error[0]),
-        "idle" => bank.idle_open.get(0).unwrap_or(&bank.idle[0]),
-        _ => bank.idle_open.get(0).unwrap_or(&bank.idle[0]),
+        "idle" => bank.idle_open.first().unwrap_or(&bank.idle[0]),
+        _ => bank.idle_open.first().unwrap_or(&bank.idle[0]),
     }
 }
 
@@ -535,6 +525,7 @@ fn blend_pixel(pixels: &mut [u8], width: u32, height: u32, x: i32, y: i32, rgba:
     pixels[idx + 3] = rgba[3];
 }
 
+#[allow(clippy::too_many_arguments)]
 fn fill_rounded_rect(pixels: &mut [u8], width: u32, height: u32, x: i32, y: i32, w: i32, h: i32, r: i32, fill: [u8; 4], border: [u8; 4]) {
     for py in y..(y + h) {
         for px in x..(x + w) {
@@ -563,6 +554,7 @@ fn fill_rounded_rect(pixels: &mut [u8], width: u32, height: u32, x: i32, y: i32,
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_text(pixels: &mut [u8], width: u32, height: u32, text: &str, x: i32, y: i32, scale: i32, color: [u8; 4]) {
     let mut cursor_x = x;
     for ch in text.chars() {
@@ -659,17 +651,6 @@ fn quad_vertices_rect(x: i32, y: i32, w: i32, h: i32) -> [Vertex; 4] {
     ]
 }
 
-fn mode_to_mood(mode: RuntimeMode) -> Mood {
-    match mode {
-        RuntimeMode::Idle => Mood::Idle,
-        RuntimeMode::Thinking => Mood::Thinking,
-        RuntimeMode::Working => Mood::WalkRight,
-        RuntimeMode::Command => Mood::Command,
-        RuntimeMode::Done => Mood::Done,
-        RuntimeMode::Error => Mood::Error,
-    }
-}
-
 fn schedule_idle_times(runtime: &mut Runtime) {
     let now = Instant::now();
     runtime.next_idle_wave_at = now + Duration::from_secs(15);
@@ -682,7 +663,6 @@ fn schedule_idle_times(runtime: &mut Runtime) {
 fn start_timed_clip(runtime: &mut Runtime, mood: Mood, duration_ms: u64, return_to: Mood) {
     runtime.static_pose = None;
     runtime.timed_clip = Some(TimedClip {
-        mood,
         started_at: Instant::now(),
         duration: Duration::from_millis(duration_ms),
         return_to,
@@ -690,6 +670,7 @@ fn start_timed_clip(runtime: &mut Runtime, mood: Mood, duration_ms: u64, return_
     set_mood(runtime, mood);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn start_screen_walk(
     runtime: &mut Runtime,
     window: &winit::window::Window,
@@ -1122,7 +1103,6 @@ pub fn run_from_args() {
         last_frame_at: now,
         walk: None,
         timed_clip: Some(TimedClip {
-            mood: Mood::Idle,
             started_at: now,
             duration: Duration::from_millis(2200),
             return_to: Mood::Idle,
@@ -1235,7 +1215,7 @@ pub fn run_from_args() {
                 NativeCommand::Hide => {
                     window.set_visible(false);
                     window.set_minimized(true);
-                    let _ = window.set_outer_position(LogicalPosition::new(-32000.0, -32000.0));
+                    window.set_outer_position(LogicalPosition::new(-32000.0, -32000.0));
                 }
                 NativeCommand::Quit => target.exit(),
             }
@@ -1305,7 +1285,7 @@ pub fn run_from_args() {
                         // Wayland often ignores this; the internal WGPU offset above is the reliable path.
                         let attempted_dx = (walk.distance as f64 * eased).round() as i32 * walk.direction;
                         let next_x = (walk.start_x + attempted_dx).max(0);
-                        let _ = window.set_outer_position(PhysicalPosition::new(next_x, walk.y));
+                        window.set_outer_position(PhysicalPosition::new(next_x, walk.y));
 
                         if progress >= 1.0 {
                             runtime.sprite_offset_x = walk.target_offset_x;

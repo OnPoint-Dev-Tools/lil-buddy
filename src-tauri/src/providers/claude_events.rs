@@ -388,18 +388,16 @@ fn strip_ansi(input: &str) -> String {
     let mut chars = input.chars().peekable();
 
     while let Some(ch) = chars.next() {
-        if ch == '\u{1b}' {
-            if matches!(chars.peek(), Some('[')) {
-                chars.next();
+        if ch == '\u{1b}' && matches!(chars.peek(), Some('[')) {
+            chars.next();
 
-                for next in chars.by_ref() {
-                    if next.is_ascii_alphabetic() {
-                        break;
-                    }
+            for next in chars.by_ref() {
+                if next.is_ascii_alphabetic() {
+                    break;
                 }
-
-                continue;
             }
+
+            continue;
         }
 
         out.push(ch);

@@ -1,4 +1,4 @@
-import { type ComponentType, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   Bot,
@@ -22,6 +22,7 @@ import {
   Terminal,
   Webhook,
   WandSparkles,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   loadSettings,
@@ -57,7 +58,7 @@ import donePreview from '../../assets/companions/tan-explorer-v2/done/03.png';
 import errorPreview from '../../assets/companions/tan-explorer-v2/error/03.png';
 import { companionCharacters, getSavedCompanionCharacterId, saveCompanionCharacterId } from '../../lib/companions';
 
-function settingsIcon(Icon: ComponentType<{ size?: number; strokeWidth?: number }>) {
+function settingsIcon(Icon: LucideIcon) {
   return <Icon size={16} strokeWidth={2.2} />;
 }
 
@@ -201,6 +202,13 @@ export function SettingsPanel(props: {
     setSettings((current) => (current ? { ...current, ...next } : current));
   }
 
+  function patchTelegramField<K extends keyof AppSettings>(field: K, value: AppSettings[K], sourceField: keyof AppSettings) {
+    patch({
+      [field]: value,
+      [sourceField]: false,
+    } as Partial<AppSettings>);
+  }
+
   function patchThemeAccent(value: string) {
     applyThemeAccent(value);
     patch({ theme_accent: value });
@@ -262,15 +270,20 @@ export function SettingsPanel(props: {
 
   async function saveTelegramGatewayConfig(nextSettings = settings) {
     if (!nextSettings) return;
-    await saveTelegramGatewaySettings(
-      nextSettings.telegram_gateway_mode ?? 'webhook',
-      nextSettings.telegram_bot_token ?? '',
-      nextSettings.telegram_allowed_chat_id ?? '',
-      nextSettings.telegram_webhook_public_url ?? '',
-      nextSettings.telegram_webhook_local_port ?? 8787,
-      nextSettings.telegram_webhook_path_secret ?? 'lil-buddy-telegram',
-      nextSettings.telegram_webhook_secret ?? 'lil-buddy-secret',
-    );
+    await saveTelegramGatewaySettings({
+      gatewayMode: nextSettings.telegram_gateway_mode ?? 'webhook',
+      botToken: nextSettings.telegram_bot_token ?? '',
+      botTokenFromEnv: nextSettings.telegram_bot_token_from_env ?? false,
+      allowedChatId: nextSettings.telegram_allowed_chat_id ?? '',
+      allowedChatIdFromEnv: nextSettings.telegram_allowed_chat_id_from_env ?? false,
+      webhookPublicUrl: nextSettings.telegram_webhook_public_url ?? '',
+      webhookPublicUrlFromEnv: nextSettings.telegram_webhook_public_url_from_env ?? false,
+      webhookLocalPort: nextSettings.telegram_webhook_local_port ?? 8787,
+      webhookPathSecret: nextSettings.telegram_webhook_path_secret ?? '',
+      webhookPathSecretFromEnv: nextSettings.telegram_webhook_path_secret_from_env ?? false,
+      webhookSecret: nextSettings.telegram_webhook_secret ?? '',
+      webhookSecretFromEnv: nextSettings.telegram_webhook_secret_from_env ?? false,
+    });
   }
 
   async function toggleTelegramGateway(enabled: boolean) {
@@ -448,9 +461,9 @@ export function SettingsPanel(props: {
                   type="password"
                   value={settings.telegram_bot_token ?? ''}
                   placeholder="123456:ABC..."
-                  onChange={(event) => patch({ telegram_bot_token: event.target.value })}
+                  onChange={(event) => patchTelegramField('telegram_bot_token', event.target.value, 'telegram_bot_token_from_env')}
                 />
-                <small>Create this with BotFather. It is stored locally in Lil Buddy settings.</small>
+                <small>Create this with BotFather. Leave blank to use <code>LIL_BUDDY_TELEGRAM_BOT_TOKEN</code> from <code>.env</code>.</small>
               </label>
 
               <label className="lm-settings-field">
@@ -459,7 +472,7 @@ export function SettingsPanel(props: {
                   className="lm-settings-input"
                   value={settings.telegram_allowed_chat_id ?? ''}
                   placeholder="Leave empty to pair first /start"
-                  onChange={(event) => patch({ telegram_allowed_chat_id: event.target.value })}
+                  onChange={(event) => patchTelegramField('telegram_allowed_chat_id', event.target.value, 'telegram_allowed_chat_id_from_env')}
                 />
                 <small>Leave empty, send <code>/start</code> to the bot, and Lil Buddy will pair the first Telegram chat.</small>
               </label>
@@ -472,9 +485,9 @@ export function SettingsPanel(props: {
                       className="lm-settings-input"
                       value={settings.telegram_webhook_public_url ?? ''}
                       placeholder="https://your-domain-or-tunnel.example"
-                      onChange={(event) => patch({ telegram_webhook_public_url: event.target.value })}
+                      onChange={(event) => patchTelegramField('telegram_webhook_public_url', event.target.value, 'telegram_webhook_public_url_from_env')}
                     />
-                    <small>Telegram requires a public HTTPS URL. Point your tunnel/domain to local port <code>{settings.telegram_webhook_local_port ?? 8787}</code>.</small>
+                    <small>Telegram requires a public HTTPS URL. Point your tunnel/domain to local port <code>{settings.telegram_webhook_local_port ?? 8787}</code>. Leave blank to use <code>LIL_BUDDY_TELEGRAM_WEBHOOK_PUBLIC_URL</code> from <code>.env</code>.</small>
                   </label>
 
                   <label className="lm-settings-field">
@@ -492,11 +505,11 @@ export function SettingsPanel(props: {
                     <span>Webhook path secret</span>
                     <input
                       className="lm-settings-input"
-                      value={settings.telegram_webhook_path_secret ?? 'lil-buddy-telegram'}
-                      placeholder="lil-buddy-telegram"
-                      onChange={(event) => patch({ telegram_webhook_path_secret: event.target.value })}
+                      value={settings.telegram_webhook_path_secret ?? ''}
+                      placeholder="Set in Lil Buddy or .env"
+                      onChange={(event) => patchTelegramField('telegram_webhook_path_secret', event.target.value, 'telegram_webhook_path_secret_from_env')}
                     />
-                    <small>Final webhook path: <code>/telegram/{settings.telegram_webhook_path_secret ?? 'lil-buddy-telegram'}</code>.</small>
+                    <small>Final webhook path: <code>/telegram/{(settings.telegram_webhook_path_secret ?? '').trim() || 'your-secret-path'}</code>. Leave blank to let Lil Buddy fall back to <code>.env</code>.</small>
                   </label>
 
                   <label className="lm-settings-field">
@@ -504,11 +517,11 @@ export function SettingsPanel(props: {
                     <input
                       className="lm-settings-input"
                       type="password"
-                      value={settings.telegram_webhook_secret ?? 'lil-buddy-secret'}
-                      placeholder="lil-buddy-secret"
-                      onChange={(event) => patch({ telegram_webhook_secret: event.target.value })}
+                      value={settings.telegram_webhook_secret ?? ''}
+                      placeholder="Set in Lil Buddy or .env"
+                      onChange={(event) => patchTelegramField('telegram_webhook_secret', event.target.value, 'telegram_webhook_secret_from_env')}
                     />
-                    <small>Sent to Telegram as <code>secret_token</code> and verified from <code>X-Telegram-Bot-Api-Secret-Token</code>.</small>
+                    <small>Sent to Telegram as <code>secret_token</code> and verified from <code>X-Telegram-Bot-Api-Secret-Token</code>. Leave blank to let Lil Buddy fall back to <code>.env</code>.</small>
                   </label>
                 </>
               ) : null}

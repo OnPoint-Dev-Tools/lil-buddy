@@ -11,7 +11,7 @@ import { TextShimmer } from '../ui/TextShimmer';
 function workspaceNameFromPath(path?: string | null) {
   if (!path) return 'Lil Buddy';
   const parts = path.split('/').filter(Boolean);
-  return parts.at(-1) || 'Workspace';
+  return parts[parts.length - 1] || 'Workspace';
 }
 
 function coerceMessages(value: unknown): StreamLine[] {

@@ -92,8 +92,25 @@ Lil Buddy can connect to local CLI tools and workspaces. Review commands careful
 
 ```bash
 npm install
+cp .env.example .env
 npm run tauri dev
 ```
+
+### Telegram environment variables
+
+Lil Buddy can load Telegram credentials from `.env` or process environment variables. Saved in-app settings take precedence when present; blank settings fields fall back to environment values.
+
+Supported variables:
+
+```bash
+LIL_BUDDY_TELEGRAM_BOT_TOKEN=
+LIL_BUDDY_TELEGRAM_WEBHOOK_PUBLIC_URL=
+LIL_BUDDY_TELEGRAM_WEBHOOK_PATH_SECRET=
+LIL_BUDDY_TELEGRAM_WEBHOOK_SECRET=
+LIL_BUDDY_TELEGRAM_ALLOWED_CHAT_ID=
+```
+
+Use `.env.example` as the template and keep real secrets only in `.env`.
 
 Linux/Wayland fallback options:
 

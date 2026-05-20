@@ -1,6 +1,9 @@
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{env, fs, path::PathBuf};
 use tauri::{AppHandle, Manager};
+
+static LOAD_DOTENV: Lazy<()> = Lazy::new(load_dotenv);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
@@ -35,11 +38,16 @@ pub struct AppSettings {
     pub telegram_gateway_enabled: bool,
     pub telegram_gateway_mode: String,
     pub telegram_bot_token: String,
+    pub telegram_bot_token_from_env: bool,
     pub telegram_webhook_public_url: String,
+    pub telegram_webhook_public_url_from_env: bool,
     pub telegram_webhook_local_port: u16,
     pub telegram_webhook_path_secret: String,
+    pub telegram_webhook_path_secret_from_env: bool,
     pub telegram_webhook_secret: String,
+    pub telegram_webhook_secret_from_env: bool,
     pub telegram_allowed_chat_id: Option<String>,
+    pub telegram_allowed_chat_id_from_env: bool,
     pub telegram_active_expert_id: Option<String>,
     pub telegram_active_expert_name: Option<String>,
     pub telegram_active_expert_role: Option<String>,
@@ -81,17 +89,60 @@ impl Default for AppSettings {
             telegram_gateway_enabled: false,
             telegram_gateway_mode: "webhook".to_string(),
             telegram_bot_token: String::new(),
-            telegram_webhook_public_url: "https://lil-buddy.cortex-ai.icu".to_string(),
+            telegram_bot_token_from_env: false,
+            telegram_webhook_public_url: String::new(),
+            telegram_webhook_public_url_from_env: false,
             telegram_webhook_local_port: 8787,
-            telegram_webhook_path_secret: "lil-buddy-telegram".to_string(),
-            telegram_webhook_secret: "lil-buddy-secret".to_string(),
+            telegram_webhook_path_secret: String::new(),
+            telegram_webhook_path_secret_from_env: false,
+            telegram_webhook_secret: String::new(),
+            telegram_webhook_secret_from_env: false,
             telegram_allowed_chat_id: None,
+            telegram_allowed_chat_id_from_env: false,
             telegram_active_expert_id: Some("default-lil-buddy".to_string()),
             telegram_active_expert_name: Some("Lil Buddy".to_string()),
             telegram_active_expert_role: Some("Default Lil Buddy".to_string()),
             telegram_active_expert_prompt: Some("You are Lil Buddy, the default helpful coding companion. Help the user clearly, stay practical, and keep them updated while working.".to_string()),
             telegram_active_workspace_path: None,
             telegram_experts_json: String::new(),
+        }
+    }
+}
+
+impl AppSettings {
+    fn strip_runtime_env_fields(&mut self) {
+        if self.telegram_bot_token_from_env {
+            self.telegram_bot_token.clear();
+        }
+        if self.telegram_webhook_public_url_from_env {
+            self.telegram_webhook_public_url.clear();
+        }
+        if self.telegram_webhook_path_secret_from_env {
+            self.telegram_webhook_path_secret.clear();
+        }
+        if self.telegram_webhook_secret_from_env {
+            self.telegram_webhook_secret.clear();
+        }
+        if self.telegram_allowed_chat_id_from_env {
+            self.telegram_allowed_chat_id = None;
+        }
+
+        self.telegram_bot_token_from_env = false;
+        self.telegram_webhook_public_url_from_env = false;
+        self.telegram_webhook_path_secret_from_env = false;
+        self.telegram_webhook_secret_from_env = false;
+        self.telegram_allowed_chat_id_from_env = false;
+    }
+}
+
+fn load_dotenv() {
+    if dotenvy::dotenv().is_ok() {
+        return;
+    }
+
+    if let Ok(current_exe) = env::current_exe() {
+        if let Some(parent) = current_exe.parent() {
+            let _ = dotenvy::from_path(parent.join(".env"));
         }
     }
 }
@@ -107,29 +158,94 @@ pub fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 pub fn load_settings(app: &AppHandle) -> AppSettings {
-    let Ok(path) = settings_path(app) else {
-        return AppSettings::default();
+    Lazy::force(&LOAD_DOTENV);
+
+    let mut settings = match settings_path(app) {
+        Ok(path) => fs::read_to_string(path)
+            .ok()
+            .and_then(|raw| serde_json::from_str(&raw).ok())
+            .unwrap_or_default(),
+        Err(_) => AppSettings::default(),
     };
 
-    let Ok(raw) = fs::read_to_string(path) else {
-        return AppSettings::default();
-    };
+    apply_env_fallbacks(&mut settings);
+    settings
+}
 
-    serde_json::from_str(&raw).unwrap_or_default()
+fn apply_env_fallbacks(settings: &mut AppSettings) {
+    settings.telegram_bot_token_from_env = apply_env_string(
+        &mut settings.telegram_bot_token,
+        &["LIL_BUDDY_TELEGRAM_BOT_TOKEN", "TELEGRAM_BOT_TOKEN"],
+    );
+    settings.telegram_webhook_public_url_from_env = apply_env_string(
+        &mut settings.telegram_webhook_public_url,
+        &[
+            "LIL_BUDDY_TELEGRAM_WEBHOOK_PUBLIC_URL",
+            "TELEGRAM_WEBHOOK_PUBLIC_URL",
+        ],
+    );
+    settings.telegram_webhook_path_secret_from_env = apply_env_string(
+        &mut settings.telegram_webhook_path_secret,
+        &[
+            "LIL_BUDDY_TELEGRAM_WEBHOOK_PATH_SECRET",
+            "TELEGRAM_WEBHOOK_PATH_SECRET",
+        ],
+    );
+    settings.telegram_webhook_secret_from_env = apply_env_string(
+        &mut settings.telegram_webhook_secret,
+        &[
+            "LIL_BUDDY_TELEGRAM_WEBHOOK_SECRET",
+            "TELEGRAM_WEBHOOK_SECRET",
+        ],
+    );
+    settings.telegram_allowed_chat_id_from_env = apply_env_option(
+        &mut settings.telegram_allowed_chat_id,
+        &[
+            "LIL_BUDDY_TELEGRAM_ALLOWED_CHAT_ID",
+            "TELEGRAM_ALLOWED_CHAT_ID",
+        ],
+    );
+}
+
+fn apply_env_string(target: &mut String, keys: &[&str]) -> bool {
+    if !target.trim().is_empty() {
+        return false;
+    }
+
+    if let Some(value) = first_env_value(keys) {
+        *target = value;
+        true
+    } else {
+        false
+    }
+}
+
+fn apply_env_option(target: &mut Option<String>, keys: &[&str]) -> bool {
+    if target.as_ref().is_some_and(|value| !value.trim().is_empty()) {
+        return false;
+    }
+
+    if let Some(value) = first_env_value(keys) {
+        *target = Some(value);
+        true
+    } else {
+        false
+    }
+}
+
+fn first_env_value(keys: &[&str]) -> Option<String> {
+    keys.iter()
+        .find_map(|key| env::var(key).ok())
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
 }
 
 pub fn save_settings(app: &AppHandle, settings: &AppSettings) -> Result<(), String> {
     let path = settings_path(app)?;
-    let raw = serde_json::to_string_pretty(settings).map_err(|error| error.to_string())?;
+    let mut persisted = settings.clone();
+    persisted.strip_runtime_env_fields();
+    let raw = serde_json::to_string_pretty(&persisted).map_err(|error| error.to_string())?;
     fs::write(path, raw).map_err(|error| error.to_string())
-}
-
-pub fn save_companion_position(_app: &AppHandle) -> Result<(), String> {
-    Ok(())
-}
-
-pub fn restore_companion_position(_app: &AppHandle) -> Result<(), String> {
-    Ok(())
 }
 
 pub fn reset_companion_position(app: &AppHandle) -> Result<(), String> {

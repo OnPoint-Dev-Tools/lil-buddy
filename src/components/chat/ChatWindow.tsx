@@ -45,6 +45,7 @@ import { OnboardingModal } from './OnboardingModal';
 import { ExpertsPanel, expertGreeting, expertPromptPrefix, loadExperts, selectedExpert, type LilExpert } from './ExpertsPanel';
 import lilBuddyLogo from '../../assets/branding/lil-buddy-logo-header.png';
 import {
+   Settings,
    SendHorizontal,
 } from 'lucide-react';
 
@@ -513,7 +514,7 @@ export function ChatWindow() {
 
     const timeout = window.setTimeout(() => {
       const parts = workspace.path?.split('/').filter(Boolean) ?? [];
-      const name = parts.at(-1) || 'Workspace';
+      const name = parts[parts.length - 1] || 'Workspace';
       saveWorkspaceSession(name, workspace.path!, messages).catch(() => {});
     }, 800);
 
@@ -943,7 +944,7 @@ export function ChatWindow() {
               <span>{workspaceDiff?.changed_files.length ?? 0}</span>
             </button>
             <button className="lm-icon-btn" onClick={() => setCommandPaletteOpen(true)}>⌘</button>
-            <button className="lm-icon-btn" onClick={() => setSettingsOpen(true)}>◎</button>
+            <div className="settings-btn lm-icon-btn" onClick={() => setSettingsOpen(true)}><Settings/></div>
             <button className="lm-icon-btn" onClick={closeChatSafely}>×</button>
           </div>
         </div>
@@ -1013,7 +1014,7 @@ export function ChatWindow() {
             title={workspace?.path ? `Workspace: ${workspace.path}` : 'Choose workspace folder'}
           >
             <span>⌂</span>
-            <strong>{workspace?.path ? workspace.path.split('/').filter(Boolean).at(-1) : 'Folder'}</strong>
+            <strong>{workspace?.path ? workspace.path.split('/').filter(Boolean).slice(-1)[0] : 'Folder'}</strong>
           </button>
 
           <textarea

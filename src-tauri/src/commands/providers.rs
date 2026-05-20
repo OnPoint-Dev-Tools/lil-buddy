@@ -186,8 +186,7 @@ fn parse_opencode_models(output: &str) -> Vec<ProviderModel> {
 
 fn prettify_model_name(value: &str) -> String {
     value
-        .replace('-', " ")
-        .replace('_', " ")
+        .replace(['-', '_'], " ")
         .split_whitespace()
         .map(|part| {
             let mut chars = part.chars();

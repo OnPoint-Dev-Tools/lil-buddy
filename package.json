@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "author": "CjLogic",
+  "author": "OnPoint-Dev-Tools",
   "scripts": {
     "dev": "vite --port 1437",
     "build": "tsc && vite build",

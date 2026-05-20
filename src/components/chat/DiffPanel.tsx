@@ -2,6 +2,7 @@ import type { WorkspaceDiff } from '../../lib/tauri/commands';
 
 export function DiffPanel(props: {
   diff: WorkspaceDiff | null;
+  selectedFile?: string | null;
   onRefresh: () => void;
 }) {
   if (!props.diff) {
@@ -15,6 +16,10 @@ export function DiffPanel(props: {
       </div>
     );
   }
+
+  const visibleDiffs = props.selectedFile
+    ? props.diff.diffs.filter((entry) => entry.path === props.selectedFile)
+    : props.diff.diffs.slice(0, 2);
 
   return (
     <div className="lm-diff-card">
@@ -41,7 +46,7 @@ export function DiffPanel(props: {
         </div>
       ) : null}
 
-      {props.diff.diffs.slice(0, 2).map((entry) => (
+      {visibleDiffs.map((entry) => (
         <details key={entry.path} className="lm-diff-details">
           <summary>{entry.path}</summary>
           <pre>{entry.diff || 'No textual diff available.'}</pre>

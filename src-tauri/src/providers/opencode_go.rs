@@ -1,4 +1,4 @@
-use super::{PromptMode, ProviderInvocation};
+use super::ProviderInvocation;
 
 pub fn build(
     prompt: &str,
@@ -77,7 +77,6 @@ fn build_run_json(
         args: args.clone(),
         stdin: None,
         preview: format!("{} {}", preview_prefix(command, provider_key), shell_words(&args)),
-        mode: PromptMode::Arg,
         workspace_path: workspace,
     })
 }
@@ -98,7 +97,6 @@ fn build_run_formatted(
         args: args.clone(),
         stdin: None,
         preview: format!("{} {}", preview_prefix(command, provider_key), shell_words(&args)),
-        mode: PromptMode::Arg,
         workspace_path: workspace,
     })
 }
@@ -123,7 +121,6 @@ fn build_run_stdin(
             shell_words(&args),
             provider_key
         ),
-        mode: PromptMode::Stdin,
         workspace_path: workspace,
     })
 }
@@ -141,7 +138,6 @@ fn build_raw_arg(
         args: args.clone(),
         stdin: None,
         preview: format!("{} {} # provider-id: {}", command, shell_words(&args), provider_key),
-        mode: PromptMode::Arg,
         workspace_path: None,
     })
 }

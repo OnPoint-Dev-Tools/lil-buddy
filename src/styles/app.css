@@ -79,6 +79,17 @@ button, input, select { font: inherit; }
   cursor: pointer;
 }
 
+.lucide-settings {
+  padding: 6px 0 6px 0;
+  width: 27x;
+  height: 27px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.42);
+  /* color: var(--muted); */
+  cursor: pointer;
+}
+
 .lm-message-scroll {
   overflow: auto;
   padding: 16px;

@@ -6,7 +6,7 @@ import type { WorkspaceDiff, WorkspaceInfo } from '../lib/tauri/commands';
 export type TabId = 'chat' | 'tool-calls' | 'file-changes' | 'history' | 'logs';
 
 export interface StreamLine {
-  kind: RuntimeEventKind;
+  kind: RuntimeEventKind | 'user-message';
   text: string;
   ts: string;
 }

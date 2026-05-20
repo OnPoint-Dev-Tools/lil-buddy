@@ -1,4 +1,4 @@
-use super::{PromptMode, ProviderInvocation};
+use super::ProviderInvocation;
 
 pub fn build(
     prompt: &str,
@@ -36,7 +36,6 @@ pub fn build(
         args,
         stdin: None,
         preview: preview_parts.join(" "),
-        mode: PromptMode::Arg,
         workspace_path,
     })
 }
