@@ -24,12 +24,16 @@ fn normalize_workspace_path(path: String) -> Option<String> {
         if output.status.success() {
             let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
             if !root.is_empty() {
-                return Some(root);
+                return Some(strip_windows_verbatim_prefix(root));
             }
         }
     }
 
-    Some(canonical.to_string_lossy().to_string())
+    Some(strip_windows_verbatim_prefix(canonical.to_string_lossy().to_string()))
+}
+
+fn strip_windows_verbatim_prefix(value: String) -> String {
+    value.strip_prefix(r"\\?\").unwrap_or(&value).to_string()
 }
 
 #[tauri::command]

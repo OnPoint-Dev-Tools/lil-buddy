@@ -141,7 +141,7 @@ fn list_opencode_models(command: &str, refresh: bool) -> Vec<ProviderModel> {
         args.push("--refresh".to_string());
     }
 
-    let output = std::process::Command::new(command).args(args).output();
+    let output = opencode_models_output(command, &args);
 
     if let Ok(output) = output {
         if output.status.success() {
@@ -156,11 +156,28 @@ fn list_opencode_models(command: &str, refresh: bool) -> Vec<ProviderModel> {
     fallback_opencode_models()
 }
 
+#[cfg(target_os = "windows")]
+fn opencode_models_output(command: &str, args: &[String]) -> std::io::Result<std::process::Output> {
+    let mut parts = Vec::with_capacity(args.len() + 1);
+    parts.push(command.to_string());
+    parts.extend(args.iter().cloned());
+
+    std::process::Command::new("cmd")
+        .args(["/C", &parts.join(" ")])
+        .output()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn opencode_models_output(command: &str, args: &[String]) -> std::io::Result<std::process::Output> {
+    std::process::Command::new(command).args(args).output()
+}
+
 fn parse_opencode_models(output: &str) -> Vec<ProviderModel> {
     output
         .lines()
         .filter_map(|line| {
-            let trimmed = line.trim();
+            let clean = strip_ansi(line);
+            let trimmed = clean.trim();
             if trimmed.is_empty() || !trimmed.contains('/') {
                 return None;
             }
@@ -201,12 +218,32 @@ fn prettify_model_name(value: &str) -> String {
 
 fn fallback_opencode_models() -> Vec<ProviderModel> {
     vec![
-        model("openai/gpt-5.4", "openai", "GPT-5.4", "Fast everyday coding and chat through OpenCode.", "fallback", vec!["tools", "repo", "search"]),
-        model("anthropic/claude-sonnet-4-6", "anthropic", "Claude Sonnet 4.6", "Strong real-world coding and reasoning model through OpenCode.", "fallback", vec!["tools", "repo"]),
-        model("google/gemini-3-flash", "google", "Gemini 3 Flash", "Fast Gemini model for lower-latency coding help.", "fallback", vec!["tools", "repo"]),
-        model("google/gemini-ultra-2", "google", "Gemini Ultra 2", "Higher-capability Gemini reasoning model.", "fallback", vec!["tools", "repo"]),
-        model("opencode/gpt-5.1-codex", "opencode", "GPT-5.1 Codex", "OpenCode recommended coding model.", "fallback", vec!["tools", "repo", "diffs"]),
+        model("opencode-go/minimax-m2.5", "opencode-go", "Minimax M2.5", "OpenCode fallback model.", "fallback", vec!["tools", "repo"]),
+        model("opencode-go/qwen3.5-plus", "opencode-go", "Qwen3.5 Plus", "OpenCode fallback model.", "fallback", vec!["tools", "repo"]),
     ]
+}
+
+fn strip_ansi(value: &str) -> String {
+    let mut result = String::with_capacity(value.len());
+    let mut chars = value.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '\u{1b}' {
+            if matches!(chars.peek(), Some('[')) {
+                chars.next();
+                while let Some(next) = chars.next() {
+                    if ('@'..='~').contains(&next) {
+                        break;
+                    }
+                }
+                continue;
+            }
+        }
+
+        result.push(ch);
+    }
+
+    result
 }
 
 fn fallback_claude_models() -> Vec<ProviderModel> {

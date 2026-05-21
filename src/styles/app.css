@@ -1302,7 +1302,7 @@ background: #090908;
   max-width: none !important;
   max-height: none !important;
   display: grid !important;
-  grid-template-rows: auto 1fr auto auto !important;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto !important;
   overflow: hidden !important;
 }
 
@@ -1312,23 +1312,22 @@ background: #090908;
 
 .lm-message-scroll.chat-first-scroll {
   min-height: 0 !important;
-  height: 100% !important;
+  height: auto !important;
   overflow-y: auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: flex-end !important;
-  align-content: stretch !important;
+  display: block !important;
   padding: 14px 16px !important;
   gap: 12px !important;
 }
 
 .lm-chip-grid {
-  flex: 0 0 auto !important;
+  display: grid !important;
 }
 
 .lm-chat-thread {
   width: 100% !important;
-  flex: 0 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
 }
 
 .lm-input-wrap {
@@ -1337,13 +1336,6 @@ background: #090908;
 
 .lm-provider-controls {
   flex: 0 0 auto !important;
-}
-
-/* When the window is tall, keep the conversation near the bottom like a real chat. */
-.chat-first-scroll::before {
-  content: "" !important;
-  flex: 1 1 auto !important;
-  min-height: 8px !important;
 }
 
 /* Wider resize should let bubbles use the room instead of staying cramped. */
@@ -4257,7 +4249,7 @@ body,
 
 
 /* Theme engine: light/dark backgrounds, contrast, and smooth transitions */
-:root {
+/* :root {
   --app-bg: linear-gradient(145deg, #f6ecd8 0%, #fbf3e5 48%, #efe1ca 100%);
   --bg: rgba(247, 240, 227, 0.96);
   --bg-solid: #f7f0e3;
@@ -4282,7 +4274,7 @@ body,
   --chat-bg: rgba(249, 241, 226, 0.96);
   --chat-scroll-bg: rgba(249, 241, 226, 0.96);
   --chat-panel-bg: rgba(255, 250, 242, 0.94);
-}
+} */
 
 body {
   color: var(--text);
@@ -4352,7 +4344,7 @@ body {
 .lm-timeline-card,
 .lm-tools-card,
 .lm-stats-card {
-  background: var(--bg-soft);
+  /* background: var(--bg-soft); */
   color: var(--text);
 }
 
@@ -4447,7 +4439,6 @@ body {
 .lm-chat-bubble.system,
 .lm-chat-bubble.progress,
 .lm-chat-bubble.thinking-stream {
-  background: var(--bg-soft);
   color: var(--text);
   border-color: var(--line);
 }
@@ -4703,6 +4694,12 @@ body { background: transparent !important; }
 .chat-first-scroll {
   background: var(--chat-scroll-bg) !important;
   color: var(--text) !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  pointer-events: auto !important;
+  overscroll-behavior: contain;
 }
 
 /* Cards/bubbles stay readable on top of the themed canvas. */

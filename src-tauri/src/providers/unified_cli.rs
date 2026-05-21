@@ -1,5 +1,6 @@
 use std::{
     io::{BufRead, BufReader, Write},
+    path::Path,
     process::{Child, Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -172,8 +173,7 @@ impl UnifiedCliRunner {
             &format!("spawn {} via unified runner", resolved_command),
         );
 
-        let mut command = Command::new(&resolved_command);
-        command.args(&self.invocation.args);
+        let mut command = build_process_command(&resolved_command, &self.invocation.args);
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
 
@@ -221,14 +221,14 @@ impl UnifiedCliRunner {
     }
 
     fn resolve_command(&self) -> Result<String, String> {
-        if command_exists(&self.invocation.command) {
-            return Ok(self.invocation.command.clone());
+        if let Some(resolved) = resolve_command_path(&self.invocation.command) {
+            return Ok(resolved);
         }
 
         if let Some(fallback) = self.invocation.fallback_command.clone() {
-            if command_exists(&fallback) {
+            if let Some(resolved) = resolve_command_path(&fallback) {
                 self.emit("provider", &format!("Using fallback command: {}", fallback));
-                return Ok(fallback);
+                return Ok(resolved);
             }
         }
 
@@ -244,6 +244,32 @@ impl UnifiedCliRunner {
     fn emit(&self, kind: &str, text: &str) {
         emit_runtime_event(&self.app, kind, text);
     }
+}
+
+#[cfg(target_os = "windows")]
+fn build_process_command(command: &str, args: &[String]) -> Command {
+    let extension = Path::new(command)
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase());
+
+    if matches!(extension.as_deref(), Some("cmd" | "bat")) {
+        let mut process = Command::new("cmd.exe");
+        process.arg("/C").arg(command);
+        process.args(args);
+        return process;
+    }
+
+    let mut process = Command::new(command);
+    process.args(args);
+    process
+}
+
+#[cfg(not(target_os = "windows"))]
+fn build_process_command(command: &str, args: &[String]) -> Command {
+    let mut process = Command::new(command);
+    process.args(args);
+    process
 }
 
 pub fn has_active_child() -> bool {
@@ -273,19 +299,77 @@ pub fn stop_active(app: AppHandle) -> Result<(), String> {
 }
 
 pub fn command_exists(command: &str) -> bool {
+    resolve_command_path(command).is_some()
+}
+
+#[cfg(target_os = "windows")]
+fn resolve_command_path(command: &str) -> Option<String> {
+    let trimmed = command.trim();
+
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if trimmed.contains('\\') || trimmed.contains('/') || trimmed.contains(':') {
+        let path = std::path::Path::new(trimmed);
+        return path.exists().then(|| trimmed.to_string());
+    }
+
+    let output = Command::new("where.exe").arg(trimmed).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+
+    let mut matches = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(|line| line.to_string())
+        .collect::<Vec<_>>();
+
+    matches.sort_by_key(|path| windows_command_priority(path));
+    matches.into_iter().next()
+}
+
+#[cfg(target_os = "windows")]
+fn windows_command_priority(path: &str) -> u8 {
+    let extension = Path::new(path)
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase());
+
+    match extension.as_deref() {
+        Some("cmd") => 0,
+        Some("bat") => 1,
+        Some("exe") => 2,
+        _ => 3,
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn resolve_command_path(command: &str) -> Option<String> {
     Command::new("sh")
         .arg("-c")
         .arg(format!("command -v {}", shell_escape_for_sh(command)))
         .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            stdout
+                .lines()
+                .map(str::trim)
+                .find(|line| !line.is_empty())
+                .map(|line| line.to_string())
+        })
 }
 
 pub fn command_version(command: &str) -> Option<String> {
+    let resolved = resolve_command_path(command).unwrap_or_else(|| command.to_string());
     let candidates = [vec!["--version"], vec!["version"], vec!["-V"]];
 
     for args in candidates {
-        let output = Command::new(command).args(args).output().ok()?;
+        let output = Command::new(&resolved).args(args).output().ok()?;
         if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
             let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
@@ -300,15 +384,17 @@ pub fn command_version(command: &str) -> Option<String> {
 }
 
 pub fn provider_auth_status(command: &str) -> bool {
+    let resolved = resolve_command_path(command).unwrap_or_else(|| command.to_string());
+
     if command == "opencode" || command == "opencode-go" {
-        let output = Command::new(command).args(["auth", "list"]).output();
+        let output = Command::new(&resolved).args(["auth", "list"]).output();
         if let Ok(output) = output {
             return output.status.success();
         }
     }
 
     if command == "claude" || command.ends_with("/claude") {
-        let output = Command::new(command).arg("--version").output();
+        let output = Command::new(&resolved).arg("--version").output();
         if let Ok(output) = output {
             return output.status.success();
         }
@@ -517,10 +603,12 @@ fn workspace_dir_from_invocation(invocation: &ProviderInvocation) -> Option<Stri
     workspace::default_workspace_path().map(|path| path.to_string_lossy().to_string())
 }
 
+#[cfg(not(target_os = "windows"))]
 pub fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace("'", "'\\''"))
 }
 
+#[cfg(not(target_os = "windows"))]
 fn shell_escape_for_sh(value: &str) -> String {
     shell_quote(value)
 }

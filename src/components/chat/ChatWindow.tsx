@@ -198,6 +198,7 @@ export function ChatWindow() {
   const [deletedSessionIds, setDeletedSessionIds] = useState<Set<string>>(() => new Set());
   const [bottomMenuOpen, setBottomMenuOpen] = useState(false);
   const bottomMenuRef = useRef<HTMLDivElement | null>(null);
+  const messageScrollRef = useRef<HTMLDivElement | null>(null);
 
 
   const {
@@ -883,6 +884,21 @@ export function ChatWindow() {
     await getCurrentWindow().minimize();
   }
 
+  function handleMessageWheel(event: React.WheelEvent<HTMLDivElement>) {
+    const container = messageScrollRef.current;
+    if (!container) return;
+
+    const nextTop = container.scrollTop + event.deltaY;
+    const canScroll = container.scrollHeight > container.clientHeight;
+
+    if (!canScroll) {
+      return;
+    }
+
+    event.preventDefault();
+    container.scrollTop = nextTop;
+  }
+
   async function toggleMaximizeChat() {
     const window = getCurrentWindow();
     const maximized = await window.isMaximized();
@@ -1034,7 +1050,7 @@ export function ChatWindow() {
           </button>
         </div>
 
-        <div className="lm-message-scroll chat-first-scroll">
+        <div className="lm-message-scroll chat-first-scroll" ref={messageScrollRef} onWheel={handleMessageWheel}>
           {messages.length <= 2 ? <PromptChips onPick={setPrompt} /> : null}
 
           <ChatMessages messages={messages} running={running} expert={activeExpert} />
