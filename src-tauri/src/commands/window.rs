@@ -1,7 +1,7 @@
 use std::{thread, time::Duration};
 use tauri::{AppHandle, Manager, PhysicalPosition};
 
-use crate::settings;
+use crate::{settings, ui_geometry};
 
 fn apply_chat_position_reliably(chat: &tauri::WebviewWindow, x: i32, y: i32) {
     let position = PhysicalPosition::new(x, y);
@@ -35,11 +35,21 @@ fn clamp_to_monitor(window: &tauri::WebviewWindow, x: i32, y: i32) -> (i32, i32)
     (x.clamp(pos.x + 8, max_x.max(pos.x + 8)), y.clamp(pos.y + 8, max_y.max(pos.y + 8)))
 }
 
-fn companion_anchor_position(app: &AppHandle, chat: &tauri::WebviewWindow) -> (i32, i32) {
+fn companion_top_anchor(app: &AppHandle) -> (i32, i32) {
     let settings = settings::load_settings(app);
     let companion_x = settings.companion_x.unwrap_or(80);
     let companion_y = settings.companion_y.unwrap_or(80);
-    clamp_to_monitor(chat, companion_x + settings.chat_offset_x, companion_y + settings.chat_offset_y)
+    ui_geometry::companion_top_anchor(companion_x, companion_y)
+}
+
+fn chat_position_above_companion(chat: &tauri::WebviewWindow, companion_center_x: i32, companion_top_y: i32) -> (i32, i32) {
+    let (x, y) = ui_geometry::chat_position_above_companion(companion_center_x, companion_top_y);
+    clamp_to_monitor(chat, x, y)
+}
+
+fn companion_anchor_position(app: &AppHandle, chat: &tauri::WebviewWindow) -> (i32, i32) {
+    let (anchor_x, anchor_y) = companion_top_anchor(app);
+    chat_position_above_companion(chat, anchor_x, anchor_y)
 }
 
 #[tauri::command]
@@ -50,6 +60,7 @@ pub fn show_chat_window(app: AppHandle) -> Result<(), String> {
 
     let (x, y) = companion_anchor_position(&app, &chat);
     apply_chat_position_reliably(&chat, x, y);
+    let _ = chat.unminimize();
     chat.show().map_err(|error| error.to_string())?;
     apply_chat_position_reliably(&chat, x, y);
     chat.set_focus().map_err(|error| error.to_string())?;
@@ -75,8 +86,9 @@ pub fn toggle_chat_window(app: AppHandle) -> Result<(), String> {
         .ok_or_else(|| "chat window not found".to_string())?;
 
     let visible = chat.is_visible().map_err(|error| error.to_string())?;
+    let minimized = chat.is_minimized().map_err(|error| error.to_string())?;
 
-    if visible {
+    if visible && !minimized {
         // Hide only. Background provider runs stay alive.
         chat.hide().map_err(|error| error.to_string())?;
         return Ok(());
@@ -84,6 +96,9 @@ pub fn toggle_chat_window(app: AppHandle) -> Result<(), String> {
 
     let (x, y) = companion_anchor_position(&app, &chat);
     apply_chat_position_reliably(&chat, x, y);
+    if minimized {
+        chat.unminimize().map_err(|error| error.to_string())?;
+    }
     chat.show().map_err(|error| error.to_string())?;
     apply_chat_position_reliably(&chat, x, y);
     chat.set_focus().map_err(|error| error.to_string())?;
@@ -96,14 +111,10 @@ pub fn anchor_chat_to_companion(app: AppHandle) -> Result<(), String> {
         .get_webview_window("chat")
         .ok_or_else(|| "chat window not found".to_string())?;
 
-    let settings = settings::load_settings(&app);
-    let companion_x = settings.companion_x.unwrap_or(80);
-    let companion_y = settings.companion_y.unwrap_or(80);
+    let (anchor_x, anchor_y) = companion_top_anchor(&app);
+    let (x, y) = chat_position_above_companion(&chat, anchor_x, anchor_y);
 
-    let x = companion_x + settings.chat_offset_x;
-    let y = companion_y + settings.chat_offset_y;
-
-    chat.set_position(PhysicalPosition::new(x.max(0), y.max(0)))
+    chat.set_position(PhysicalPosition::new(x, y))
         .map_err(|error| error.to_string())?;
 
     Ok(())

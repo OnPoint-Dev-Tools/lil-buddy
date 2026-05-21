@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
   hideChatWindow,
   detectProviders,
@@ -45,11 +46,14 @@ import { OnboardingModal } from './OnboardingModal';
 import { ExpertsPanel, expertGreeting, expertPromptPrefix, loadExperts, selectedExpert, type LilExpert } from './ExpertsPanel';
 import lilBuddyLogo from '../../assets/branding/lil-buddy-logo-header.png';
 import {
+   Maximize2,
    MoreHorizontal,
+   Minus,
    NotepadTextDashed,
    Paperclip,
    Settings,
    SendHorizontal,
+   X,
 } from 'lucide-react';
 
 type ExpertChatSession = {
@@ -875,6 +879,33 @@ export function ChatWindow() {
     await hideChatWindow();
   }
 
+  async function minimizeChat() {
+    await getCurrentWindow().minimize();
+  }
+
+  async function toggleMaximizeChat() {
+    const window = getCurrentWindow();
+    const maximized = await window.isMaximized();
+
+    if (maximized) {
+      await window.unmaximize();
+      return;
+    }
+
+    await window.maximize();
+  }
+
+  function handleHeaderMouseDown(event: React.MouseEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('[data-tauri-drag-region="false"]')) {
+      return;
+    }
+
+    getCurrentWindow().startDragging().catch(() => {});
+  }
+
   const selectedInstalled = providerStatuses.some((p) => p.id === safeProvider(selectedProvider) && p.installed);
 
   return (
@@ -946,12 +977,17 @@ export function ChatWindow() {
       <div className="lm-chat-card chat-first">
         <div className="lm-card-topline" />
 
-        <div className="lm-header">
-          <div className="lm-header-top-actions">
-            <button type="button" className="lm-icon-btn" aria-label="Open settings" onClick={() => setSettingsOpen(true)}>
-              <Settings />
+        <div className="lm-header" onMouseDown={handleHeaderMouseDown}>
+          <div className="lm-header-top-actions" data-tauri-drag-region="false">
+            <button type="button" className="lm-icon-btn" aria-label="Minimize chat" onClick={minimizeChat}>
+              <Minus />
             </button>
-            <button type="button" className="lm-icon-btn" aria-label="Close chat" onClick={closeChatSafely}>×</button>
+            <button type="button" className="lm-icon-btn" aria-label="Maximize or restore chat" onClick={toggleMaximizeChat}>
+              <Maximize2 />
+            </button>
+          <button type="button" className="lm-icon-btn" aria-label="Close Chat" onClick={closeChatSafely}>
+            <X />
+          </button>
           </div>
 
           <div className="lm-header-brand">
@@ -1063,6 +1099,18 @@ export function ChatWindow() {
                   <span className="lm-bottom-menu-item-icon"><NotepadTextDashed /></span>
                   <strong>Quick actions</strong>
                   <small>Open command palette</small>
+                </button>
+                  <button
+                  type="button"
+                  className="lm-bottom-menu-item"
+                  onClick={() => {
+                    setSettingsOpen(true);
+                    setBottomMenuOpen(false);
+                  }}
+                >
+                  <span className="lm-bottom-menu-item-icon"><Settings /></span>
+                  <strong>Settings</strong>
+                  <small>Theme, provider, companion</small>
                 </button>
               </div>
             ) : null}

@@ -1,5 +1,4 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { TextShimmer } from '../ui/TextShimmer';
 
 export type SettingsDropdownOption = {
   id: string;
@@ -68,7 +67,7 @@ export function SettingsDropdown(props: {
         <span className="lm-model-icon">{selected?.icon ?? '◈'}</span>
         <span className="lm-model-main">
           <span className="lm-model-kicker">{props.label}</span>
-          <TextShimmer text={selected ? optionName(selected) : props.placeholder ?? 'Select'} />
+          <span className="lm-settings-dropdown-value">{selected ? optionName(selected) : props.placeholder ?? 'Select'}</span>
         </span>
         {selected?.badge ? <span className="lm-model-badge">{selected.badge}</span> : null}
         <span className="lm-model-chevron">⌄</span>

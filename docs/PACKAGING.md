@@ -60,6 +60,81 @@ src-tauri/target/release/bundle/msi/
 
 For users, the easiest file is usually the NSIS setup `.exe`.
 
+### 1. Install Rust                                                                     
+
+ In PowerShell:                                                                          
+                                                                             
+ ```powershell                                                                           
+
+   winget install Rustlang.Rustup                                                        
+
+ ```                                                                                     
+
+ or use:                                                                                 
+
+ - [https://rustup.rs](https://rustup.rs)                                                                     
+
+
+ Then install the MSVC toolchain:                                                        
+                                                                                    
+
+ ```powershell                           
+
+   rustup toolchain install stable-x86_64-pc-windows-msvc
+   rustup default stable-x86_64-pc-windows-msvc                                          
+
+ ```                                                                                     
+
+ ### 2. Install Visual Studio C++ build tools                                            
+
+
+ Tauri on Windows also needs MSVC tools.                                                 
+
+ Install Visual Studio Build Tools with:                                                 
+
+ - Desktop development with C++                                                          
+
+ - Windows SDK                                                                           
+
+                                                                                         
+ Quick way:                                                                              
+
+                                                                                         
+ ```powershell                                                                           
+
+   winget install Microsoft.VisualStudio.2022.BuildTools                                 
+
+ ```                                                                                     
+                                                                                     
+ ### 3. Restart terminal / VS Code                                                       
+
+ Important: PATH often won’t update until you reopen VS Code or the terminal.            
+
+
+ ### 4. Verify                                                                           
+
+ Run:                                                                                    
+
+ ```powershell                                                                           
+
+   cargo --version                                                                       
+
+   rustc --version                                                                       
+
+ ```                                                                                                                                                
+ If cargo fails, PATH still isn’t loaded.                                                
+
+
+ ### 5. Then build                                                                                                                                     
+
+ ```powershell                                                                           
+
+   npm install                                                                           
+
+   npm run build:desktop                                                                 
+
+ ```                    
+
 ### macOS
 
 Build on macOS. For public users, signed and notarized `.dmg` releases are best.
@@ -124,3 +199,4 @@ Suggested warning:
 ```txt
 This is an experimental Developer Preview. Unsigned builds may show operating system warnings. Please review the privacy and security notes before connecting providers, Telegram, or workspaces.
 ```
+

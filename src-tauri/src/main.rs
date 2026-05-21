@@ -1,9 +1,12 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod commands;
 mod desktop;
 mod providers;
 mod runtime;
 mod safety;
 mod settings;
+mod ui_geometry;
 mod workspace;
 mod native_companion;
 mod native_companion_manager;
@@ -23,7 +26,12 @@ fn main() {
         .setup(|app| {
             tray::setup_tray(app)?;
             let app_handle = app.handle().clone();
-            let _ = native_companion_manager::start(&app_handle);
+            if let Err(error) = native_companion_manager::start(&app_handle) {
+                let _ = app.emit(
+                    "runtime://stream",
+                    runtime::stream_event("stderr", &format!("native companion failed to start: {error}")),
+                );
+            }
 
             if settings::load_settings(&app_handle).telegram_gateway_enabled {
                 let _ = gateways::telegram::start(app_handle.clone());

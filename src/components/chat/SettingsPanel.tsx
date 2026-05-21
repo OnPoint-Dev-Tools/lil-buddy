@@ -22,6 +22,7 @@ import {
   Terminal,
   Webhook,
   WandSparkles,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -355,9 +356,13 @@ export function SettingsPanel(props: {
         <div className="lm-modal-header">
           <div>
             <h3>Settings</h3>
-            <small>Personalize Lil Buddy.</small>
+            <small>Personalize your Lil Buddy.</small>
           </div>
-          <button className="lm-icon-btn" onClick={props.onClose}>×</button>
+          <div className='close-btn'>
+          <button type="button" className="lm-icon-btn" aria-label="Close Chat" onClick={props.onClose}>
+            <X />
+          </button>
+          </div>
         </div>
 
         {!settings ? (

@@ -195,6 +195,12 @@ struct Runtime {
     idle_wave_pose: String,
 }
 
+struct DragState {
+    press_cursor: PhysicalPosition<f64>,
+    moved: bool,
+    native_dragging: bool,
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
@@ -809,14 +815,34 @@ async fn create_renderer(window: Arc<winit::window::Window>) -> Result<GpuRender
         .create_surface(window.clone())
         .map_err(|error| format!("create native companion surface: {error}"))?;
 
-    let adapter = instance
+    let adapter = if let Some(adapter) = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
         })
         .await
-        .ok_or_else(|| "no compatible GPU adapter found for native companion".to_string())?;
+    {
+        adapter
+    } else if let Some(adapter) = instance
+        .request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            compatible_surface: Some(&surface),
+            force_fallback_adapter: false,
+        })
+        .await
+    {
+        adapter
+    } else {
+        instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::LowPower,
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: true,
+            })
+            .await
+            .ok_or_else(|| "no compatible GPU adapter found for native companion".to_string())?
+    };
 
     let (device, queue) = adapter
         .request_device(
@@ -1162,8 +1188,13 @@ pub fn run_from_args() {
 
     window.set_visible(true);
 
-    let mut renderer = pollster::block_on(create_renderer(window.clone()))
-        .expect("native companion wgpu renderer");
+    let mut renderer = match pollster::block_on(create_renderer(window.clone())) {
+        Ok(renderer) => renderer,
+        Err(error) => {
+            eprintln!("native companion renderer failed: {error}");
+            return;
+        }
+    };
 
     let (tx, rx) = mpsc::channel();
     spawn_stdin_reader(tx);
@@ -1194,6 +1225,8 @@ pub fn run_from_args() {
         active_event_pose: None,
         idle_wave_pose,
     };
+    let mut drag_state: Option<DragState> = None;
+    let mut last_cursor_pos = PhysicalPosition::new(0.0, 0.0);
 
     let _ = event_loop.run(move |event, target| {
         target.set_control_flow(ControlFlow::WaitUntil(
@@ -1299,15 +1332,52 @@ pub fn run_from_args() {
             match event {
                 WindowEvent::CloseRequested => target.exit(),
                 WindowEvent::MouseInput { state: ElementState::Pressed, button: MouseButton::Left, .. } => {
-                    if let Ok(pos) = window.outer_position() {
-                        let head_x = pos.x + companion_scale.sprite_x() + runtime.sprite_offset_x + (companion_scale.sprite_size as i32 / 2);
-                        let head_y = pos.y + companion_scale.sprite_y + 16;
-                        send_ipc(ipc_port, &format!("toggle_chat_at {} {}", head_x, head_y));
-                    } else {
-                        send_ipc(ipc_port, "toggle_chat");
+                    drag_state = Some(DragState {
+                        press_cursor: last_cursor_pos,
+                        moved: false,
+                        native_dragging: false,
+                    });
+                }
+                WindowEvent::MouseInput { state: ElementState::Released, button: MouseButton::Left, .. } => {
+                    if let Some(drag) = drag_state.take() {
+                        if drag.moved {
+                            if let Ok(pos) = window.outer_position() {
+                                send_ipc(ipc_port, &format!("position {} {}", pos.x + runtime.sprite_offset_x, pos.y));
+                            }
+                        } else if let Ok(pos) = window.outer_position() {
+                            let anchor_x = pos.x + runtime.sprite_offset_x + 170;
+                            let anchor_y = pos.y;
+                            send_ipc(ipc_port, &format!("toggle_chat_at {} {}", anchor_x, anchor_y));
+                        } else {
+                            send_ipc(ipc_port, "toggle_chat");
+                        }
+                    }
+                }
+                WindowEvent::CursorMoved { position, .. } => {
+                    last_cursor_pos = position;
+
+                    if let Some(drag) = drag_state.as_mut() {
+                        let delta_x = position.x - drag.press_cursor.x;
+                        let delta_y = position.y - drag.press_cursor.y;
+
+                        if !drag.moved && (delta_x.abs() >= 6.0 || delta_y.abs() >= 6.0) {
+                            drag.moved = true;
+                            runtime.walk = None;
+                            runtime.timed_clip = None;
+                            runtime.static_pose = None;
+                            runtime.bubble_label = None;
+                            runtime.requested_mood = Mood::Idle;
+                            set_mood(&mut runtime, Mood::Idle);
+
+                            if !drag.native_dragging {
+                                let _ = window.drag_window();
+                                drag.native_dragging = true;
+                            }
+                        }
                     }
                 }
                 WindowEvent::MouseInput { state: ElementState::Pressed, button: MouseButton::Right, .. } => {
+                    drag_state = None;
                     send_ipc(ipc_port, "open_menu");
                 }
                 WindowEvent::Resized(size) => {

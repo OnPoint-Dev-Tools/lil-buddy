@@ -11,7 +11,7 @@ use std::{
 };
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
-use crate::{commands, settings};
+use crate::{commands, settings, ui_geometry};
 
 struct NativeCompanionHandle {
     child: Child,
@@ -107,21 +107,76 @@ fn clamp_to_monitor(window: &tauri::WebviewWindow, x: i32, y: i32) -> (i32, i32)
     (x.clamp(pos.x + 8, max_x.max(pos.x + 8)), y.clamp(pos.y + 8, max_y.max(pos.y + 8)))
 }
 
-fn toggle_chat_above_head(app: &AppHandle, head_x: i32, head_y: i32) {
+fn chat_position_above_companion(chat: &tauri::WebviewWindow, companion_center_x: i32, companion_top_y: i32) -> (i32, i32) {
+    let (x, y) = ui_geometry::chat_position_above_companion(companion_center_x, companion_top_y);
+    clamp_to_monitor(chat, x, y)
+}
+
+fn companion_launch_position(app: &AppHandle, x: i32, y: i32) -> (i32, i32) {
+    let Some(chat) = app.get_webview_window("chat") else {
+        return (x.max(8), y.max(8));
+    };
+
+    let monitor = chat
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| chat.primary_monitor().ok().flatten());
+
+    let Some(monitor) = monitor else {
+        return (x.max(8), y.max(8));
+    };
+
+    let pos = monitor.position();
+    let size = monitor.size();
+    let max_x = pos.x + size.width as i32 - 140;
+    let max_y = pos.y + size.height as i32 - 140;
+
+    (
+        x.clamp(pos.x + 8, max_x.max(pos.x + 8)),
+        y.clamp(pos.y + 8, max_y.max(pos.y + 8)),
+    )
+}
+
+fn centered_companion_position(app: &AppHandle) -> (i32, i32) {
+    let Some(chat) = app.get_webview_window("chat") else {
+        return (80, 80);
+    };
+
+    let monitor = chat
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| chat.primary_monitor().ok().flatten());
+
+    let Some(monitor) = monitor else {
+        return (80, 80);
+    };
+
+    let pos = monitor.position();
+    let size = monitor.size();
+    let centered_x = pos.x + ((size.width as i32 - ui_geometry::COMPANION_WIDTH) / 2);
+    let centered_y = pos.y + ((size.height as i32 - ui_geometry::COMPANION_HEIGHT) / 2);
+    companion_launch_position(app, centered_x, centered_y)
+}
+
+fn toggle_chat_above_head(app: &AppHandle, anchor_x: i32, anchor_y: i32) {
     let Some(chat) = app.get_webview_window("chat") else {
         return;
     };
 
     let visible = chat.is_visible().unwrap_or(false);
-    if visible {
+    let minimized = chat.is_minimized().unwrap_or(false);
+    if visible && !minimized {
         let _ = chat.hide();
         return;
     }
 
-    let settings = settings::load_settings(app);
-    let chat_x = head_x + settings.chat_offset_x;
-    let chat_y = head_y + settings.chat_offset_y;
-    let (chat_x, chat_y) = clamp_to_monitor(&chat, chat_x, chat_y);
+    if minimized {
+        let _ = chat.unminimize();
+    }
+
+    let (chat_x, chat_y) = chat_position_above_companion(&chat, anchor_x, anchor_y);
 
     apply_chat_position_reliably(&chat, chat_x, chat_y);
     let _ = chat.show();
@@ -169,6 +224,23 @@ fn start_ipc_listener(app: AppHandle) -> Result<u16, String> {
     Ok(port)
 }
 
+fn forward_child_stream<R: std::io::Read + Send + 'static>(app: AppHandle, reader: R, kind: &'static str) {
+    thread::spawn(move || {
+        for line in BufReader::new(reader).lines().map_while(Result::ok) {
+            let trimmed = line.trim();
+
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            let _ = app.emit(
+                "runtime://stream",
+                crate::runtime::stream_event(kind, &format!("native companion: {trimmed}")),
+            );
+        }
+    });
+}
+
 pub fn start(app: &AppHandle) -> Result<(), String> {
     let mut guard = handle_cell().lock().map_err(|_| "native companion lock poisoned".to_string())?;
 
@@ -177,8 +249,10 @@ pub fn start(app: &AppHandle) -> Result<(), String> {
     }
 
     let settings = settings::load_settings(app);
-    let x = settings.companion_x.unwrap_or(80);
-    let y = settings.companion_y.unwrap_or(80);
+    let (x, y) = centered_companion_position(app);
+    if settings.companion_x != Some(x) || settings.companion_y != Some(y) {
+        let _ = settings::save_companion_position_xy(app, x, y);
+    }
     let port = start_ipc_listener(app.clone())?;
     let current_exe = std::env::current_exe().map_err(|error| error.to_string())?;
 
@@ -197,8 +271,18 @@ pub fn start(app: &AppHandle) -> Result<(), String> {
         .arg("--companion-size")
         .arg(settings.companion_size.clone())
         .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .map_err(|error| error.to_string())?;
+
+    if let Some(stdout) = child.stdout.take() {
+        forward_child_stream(app.clone(), stdout, "status");
+    }
+
+    if let Some(stderr) = child.stderr.take() {
+        forward_child_stream(app.clone(), stderr, "stderr");
+    }
 
     let Some(stdin) = child.stdin.take() else {
         return Err("failed to open native companion stdin".to_string());

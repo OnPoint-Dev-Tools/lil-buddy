@@ -29,6 +29,13 @@
 
 * { box-sizing: border-box; }
 
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  border-radius: 24px;
+  overflow: hidden;
+}
+
 body { color: var(--text); background: transparent; overflow: hidden; }
 button, input, select { font: inherit; }
 
@@ -91,6 +98,10 @@ button, input, select { font: inherit; }
   place-items: center;
   padding: 0;
   flex: 0 0 auto;
+}
+
+.close-btn {
+   margin-bottom: 56px;
 }
 
 .lm-icon-btn svg {
@@ -1130,6 +1141,8 @@ background: #090908;
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  border-radius: 24px;
+  overflow: hidden;
 }
 
 .lm-chat-card {
@@ -2058,8 +2071,8 @@ background: #090908;
 
 .lm-quick-modal,
 .lm-approval-modal {
-  width: min(430px, calc(100vw - 40px));
-  max-height: min(560px, calc(100vh - 60px));
+  width: min(390px, calc(100vw - 36px));
+  max-height: min(520px, calc(100vh - 48px));
   display: grid;
   grid-template-rows: auto 1fr;
   border: 1px solid var(--line);
@@ -2070,28 +2083,63 @@ background: #090908;
 }
 
 .lm-quick-list {
-  padding: 12px;
+  padding: 10px;
   display: grid;
-  gap: 8px;
+  gap: 6px;
   overflow: auto;
 }
 
-.lm-quick-list button {
+.lm-quick-editor-card {
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.44);
+  border-radius: 14px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.lm-quick-editor-card:hover {
+  background: rgba(255,255,255,0.66);
+}
+
+.lm-quick-editor-input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.72);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 9px 10px;
+  resize: vertical;
+  min-height: 58px;
+  font: inherit;
+  line-height: 1.4;
+}
+
+.lm-quick-editor-actions,
+.lm-quick-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lm-quick-editor-actions button,
+.lm-quick-footer-actions button {
   border: 1px solid var(--line);
   background: rgba(255,255,255,0.44);
   color: var(--text);
-  border-radius: 14px;
-  padding: 12px;
-  text-align: left;
+  border-radius: 12px;
+  padding: 8px 10px;
   cursor: pointer;
   font-weight: 800;
-  display: flex;
-  gap: 9px;
-  align-items: center;
 }
 
-.lm-quick-list button:hover {
-  background: rgba(255,255,255,0.66);
+.lm-quick-footer-actions {
+  margin-top: 4px;
+}
+
+.lm-settings-dropdown-value {
+  display: block;
+  font-weight: 700;
 }
 
 .lm-approval-body {
@@ -4241,7 +4289,7 @@ body {
 }
 
 .lm-chat-stage {
-  background: var(--app-bg);
+  background: transparent;
   transition: background 260ms ease;
 }
 
@@ -4552,11 +4600,11 @@ body {
   --shadow: 0 18px 60px rgba(0,0,0,0.52);
 }
 html, body, #root, .lm-chat-stage {
-  background: var(--app-bg) !important;
+  background: transparent !important;
   color: var(--text);
   transition: background 240ms ease, color 180ms ease;
 }
-body { background: var(--app-bg) !important; }
+body { background: transparent !important; }
 
 .lm-chat-card { background: var(--bg); color: var(--text); border-color: var(--line); }
 .lm-card-topline { background: linear-gradient(90deg, var(--topline-start), var(--topline-mid), var(--topline-end)) !important; }
@@ -4906,6 +4954,37 @@ body { background: var(--app-bg) !important; }
 .lm-settings-empty,
 .lm-settings-body p {
   color: var(--muted) !important;
+}
+
+/* Final quick actions compact sizing override */
+.lm-quick-modal {
+  width: min(390px, calc(100vw - 36px)) !important;
+  max-height: min(520px, calc(100vh - 48px)) !important;
+}
+
+.lm-quick-modal .lm-modal-header.compact {
+  padding: 10px 12px !important;
+}
+
+.lm-quick-list {
+  padding: 10px !important;
+  gap: 6px !important;
+}
+
+.lm-quick-editor-card {
+  padding: 10px !important;
+  gap: 8px !important;
+  border-radius: 12px !important;
+}
+
+.lm-quick-editor-input {
+  min-height: 58px !important;
+  padding: 9px 10px !important;
+}
+
+.lm-quick-editor-actions button,
+.lm-quick-footer-actions button {
+  padding: 8px 10px !important;
 }
 
 .lm-settings-input,

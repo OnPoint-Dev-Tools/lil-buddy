@@ -8,7 +8,7 @@ APP_NAME="Lil Buddy"
 ARCH="x86_64"
 APPIMAGE_DIR="$ROOT_DIR/src-tauri/target/release/bundle/appimage"
 APPDIR="$APPIMAGE_DIR/${APP_NAME}.AppDir"
-APPIMAGE_OUTPUT="$APPIMAGE_DIR/${APP_NAME}_0.1.0_amd64.AppImage"
+APPIMAGE_OUTPUT="$APPIMAGE_DIR/${APP_NAME}_1.0.AppImage"
 PLUGIN_APPIMAGE="$HOME/.cache/tauri/linuxdeploy-plugin-appimage.AppImage"
 
 if [[ ! -f "$ROOT_DIR/src-tauri/icons/icon.icns" ]]; then

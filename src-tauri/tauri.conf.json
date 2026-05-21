@@ -13,16 +13,16 @@
          {
             "label": "chat",
             "title": "Lil Buddy",
-            "width": 518,
-            "height": 796,
+            "width": 514,
+            "height": 700,
             "resizable": true,
             "transparent": true,
             "decorations": false,
             "visible": false,
             "alwaysOnTop": true,
             "shadow": false,
-            "minWidth": 518,
-            "minHeight": 796
+            "minWidth": 514,
+            "minHeight": 700
          }
       ],
       "security": {

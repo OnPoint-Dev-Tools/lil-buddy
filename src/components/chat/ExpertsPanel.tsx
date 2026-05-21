@@ -246,8 +246,8 @@ export function ExpertsPanel(props: {
   const subtitle = active ? `expert · ${active.role}` : 'expert · default';
 
   return (
-    <div className="lm-title-switcher lm-experts-title" ref={rootRef}>
-      <button className="lm-title-trigger" onClick={() => setOpen(!open)}>
+    <div className="lm-title-switcher lm-experts-title" ref={rootRef} data-tauri-drag-region="false">
+      <button className="lm-title-trigger" onClick={() => setOpen(!open)} data-tauri-drag-region="false">
         <span className="lm-title-icon lm-expert-face-icon">
           {active ? <img src={expertIconSrc(active.icon)} alt="" /> : 'LM'}
         </span>
@@ -258,7 +258,7 @@ export function ExpertsPanel(props: {
       <div className="lm-muted">{subtitle}</div>
 
       {open ? (
-        <div className="lm-title-popover lm-experts-title-popover">
+        <div className="lm-title-popover lm-experts-title-popover" data-tauri-drag-region="false">
           <div className="lm-model-search">
             <span>⌕</span>
             <input
@@ -315,8 +315,8 @@ export function ExpertsPanel(props: {
       ) : null}
 
       {modalOpen ? (
-        <div className="lm-modal-overlay-solid" onClick={() => setModalOpen(false)}>
-          <div className="lm-modal-card lm-experts-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="lm-modal-overlay-solid" data-tauri-drag-region="false" onClick={() => setModalOpen(false)}>
+          <div className="lm-modal-card lm-experts-modal" data-tauri-drag-region="false" onClick={(event) => event.stopPropagation()}>
             <div className="lm-modal-header">
               <div>
                 <h3>Lil Buddy Experts</h3>
