@@ -15,6 +15,13 @@ const HIDE_CHAT_ID: &str = "hide-chat";
 const RESTORE_POSITION_ID: &str = "restore-position";
 const QUIT_ID: &str = "quit";
 
+fn quit_app(app: &AppHandle) {
+    hide_chat(app);
+    let _ = native_companion_manager::hide();
+    let _ = native_companion_manager::stop();
+    app.exit(0);
+}
+
 pub fn setup_tray(app: &mut App) -> tauri::Result<()> {
     let show_lil_buddy = MenuItem::with_id(
         app,
@@ -103,7 +110,7 @@ pub fn setup_tray(app: &mut App) -> tauri::Result<()> {
             } = event
             {
                 let app = tray.app_handle();
-                toggle_chat(app);
+                show_companion(app);
             }
         })
         .build(app)?;
@@ -120,7 +127,7 @@ fn handle_menu_event(app: &AppHandle, id: &str) {
         RESTORE_POSITION_ID => {
             restore_positions(app);
         }
-        QUIT_ID => app.exit(0),
+        QUIT_ID => quit_app(app),
         _ => {}
     }
 }
@@ -130,7 +137,6 @@ fn show_companion(app: &AppHandle) {
     // Start first, then send show as a no-op/safety command if it is already running.
     let _ = native_companion_manager::start(app);
     let _ = native_companion_manager::show();
-    show_chat(app);
 }
 
 fn hide_companion(app: &AppHandle) {
@@ -153,18 +159,6 @@ fn show_chat(app: &AppHandle) {
 fn hide_chat(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("chat") {
         window.hide().ok();
-    }
-}
-
-fn toggle_chat(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window("chat") {
-        let visible = window.is_visible().unwrap_or(false);
-        if visible {
-            window.hide().ok();
-        } else {
-            window.show().ok();
-            window.set_focus().ok();
-        }
     }
 }
 

@@ -60,80 +60,61 @@ src-tauri/target/release/bundle/msi/
 
 For users, the easiest file is usually the NSIS setup `.exe`.
 
-### 1. Install Rust                                                                     
+### 1. Install Rust
 
- In PowerShell:                                                                          
-                                                                             
- ```powershell                                                                           
+ In PowerShell:
 
-   winget install Rustlang.Rustup                                                        
+ ```powershell
+   winget install Rustlang.Rustup
+ ```
 
- ```                                                                                     
+ or use:
 
- or use:                                                                                 
+- [https://rustup.rs](https://rustup.rs)
+ Then install the MSVC toolchain:
 
- - [https://rustup.rs](https://rustup.rs)                                                                     
-
-
- Then install the MSVC toolchain:                                                        
-                                                                                    
-
- ```powershell                           
-
+ ```powershell
    rustup toolchain install stable-x86_64-pc-windows-msvc
-   rustup default stable-x86_64-pc-windows-msvc                                          
+   rustup default stable-x86_64-pc-windows-msvc
 
- ```                                                                                     
+ ```
 
- ### 2. Install Visual Studio C++ build tools                                            
+### 2. Install Visual Studio C++ build tools
 
+ Tauri on Windows also needs MSVC tools.
+ Install Visual Studio Build Tools with:
 
- Tauri on Windows also needs MSVC tools.                                                 
+- Desktop development with C++
+- Windows SDK
 
- Install Visual Studio Build Tools with:                                                 
+ Quick way:
 
- - Desktop development with C++                                                          
+ ```powershell
+   winget install Microsoft.VisualStudio.2022.BuildTools
+ ```
 
- - Windows SDK                                                                           
+### 3. Restart terminal / VS Code
 
-                                                                                         
- Quick way:                                                                              
+ Important: PATH often won’t update until you reopen VS Code or the terminal.
 
-                                                                                         
- ```powershell                                                                           
+### 4. Verify
 
-   winget install Microsoft.VisualStudio.2022.BuildTools                                 
+ Run:
 
- ```                                                                                     
-                                                                                     
- ### 3. Restart terminal / VS Code                                                       
+ ```powershell
+   cargo --version
+   rustc --version
 
- Important: PATH often won’t update until you reopen VS Code or the terminal.            
+ ```
 
+ If cargo fails, PATH still isn’t loaded.
 
- ### 4. Verify                                                                           
+### 5. Then build
 
- Run:                                                                                    
-
- ```powershell                                                                           
-
-   cargo --version                                                                       
-
-   rustc --version                                                                       
-
- ```                                                                                                                                                
- If cargo fails, PATH still isn’t loaded.                                                
-
-
- ### 5. Then build                                                                                                                                     
-
- ```powershell                                                                           
-
-   npm install                                                                           
-
-   npm run build:desktop                                                                 
-
- ```                    
+ ```powershell
+   npm install
+   npm run build:desktop
+ ```
 
 ### macOS
 
@@ -199,4 +180,3 @@ Suggested warning:
 ```txt
 This is an experimental Developer Preview. Unsigned builds may show operating system warnings. Please review the privacy and security notes before connecting providers, Telegram, or workspaces.
 ```
-

@@ -7,11 +7,6 @@ pub fn tray_show_lil_buddy(app: AppHandle) -> Result<(), String> {
     let _ = native_companion_manager::start(&app);
     let _ = native_companion_manager::show();
 
-    if let Some(window) = app.get_webview_window("chat") {
-        window.show().map_err(|error| error.to_string())?;
-        window.set_focus().ok();
-    }
-
     Ok(())
 }
 
@@ -38,6 +33,11 @@ pub fn tray_open_chat(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub fn tray_quit(app: AppHandle) {
+    if let Some(window) = app.get_webview_window("chat") {
+        let _ = window.hide();
+    }
+
+    let _ = native_companion_manager::hide();
     let _ = native_companion_manager::stop();
     app.exit(0);
 }
