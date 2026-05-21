@@ -24,7 +24,8 @@ src-tauri/target/
 Thumbs.db
 .vscode/
 .idea/
-plans/*
+plans.md
+ROADMAP.md
 docs/POSITIONING.md
 docs/RELEASE_CHECKLIST.md
 docs/SAFETY_CHECKS.md

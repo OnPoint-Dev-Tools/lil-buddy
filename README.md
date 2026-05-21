@@ -46,7 +46,7 @@ It is not mainly a coding app. Coding help is one ability. Lil Buddy is meant to
 - light coding and project assistance
 - optional Telegram access for remote chatting
 
-> Status: **Developer Preview**  
+> Status: **Developer Preview**
 > Lil Buddy is experimental. Expect rough edges, rapid changes, and active polishing.
 
 ## Features
@@ -131,11 +131,11 @@ See `ROADMAP.md`.
 
 ## Contributing
 
-See `CONTRIBUTING.md`.
+See `docs/CONTRIBUTING.md`.
 
 ## Security
 
-See `SECURITY.md`.
+See `docs/SECURITY.md`.
 
 ## Installing packaged builds
 
