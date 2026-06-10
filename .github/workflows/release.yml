@@ -52,6 +52,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          beforeBuildCommand: 'npm install'
           tagName: ${{ github.ref_name }}
           releaseName: 'Lil Buddy ${{ github.ref_name }} Developer Preview'
           releaseBody: |

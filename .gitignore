@@ -31,3 +31,4 @@ ROADMAP.md
 # docs/SAFETY_CHECKS.md
 # docs/CODE_SIGNING_NOTES.md
 .pi/
+bun.lock
