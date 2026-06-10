@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lil Buddy — Your local-first desktop AI helper</title>
+<meta name="description" content="A warm, local-first desktop AI helper with animated companions that walk, think, and vibe alongside you." />
+<meta property="og:title" content="Lil Buddy — Your local-first desktop AI helper" />
+<meta property="og:description" content="Animated AI companions for your desktop. Chat, plan, search, write, and code with a buddy that walks beside you." />
+<meta property="og:image" content="assets/lil-buddy-logo.png" />
+<meta property="og:type" content="website" />
+<link rel="icon" type="image/png" href="assets/lil-buddy-logo.png" />
+<style>
+  :root {
+    --mint-50: #f3faf6;
+    --mint-100: #e5f6ed;
+    --mint-200: #d0eadc;
+    --mint-300: #9edbc0;
+    --mint-400: #5fc49a;
+    --mint-500: #3f9f79;
+    --mint-600: #2e7a5a;
+    --mint-700: #265f47;
+    --mint-800: #203b31;
+    --mint-900: #162922;
+    --text: #203b31;
+    --muted: #5f7b6e;
+    --line: rgba(42, 111, 83, 0.12);
+    --line-strong: rgba(42, 111, 83, 0.24);
+    --bg: rgba(235, 247, 240, 0.96);
+    --card-bg: rgba(255, 255, 255, 0.7);
+    --accent: #3f9f79;
+    --accent-glow: rgba(63, 159, 121, 0.2);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    background: linear-gradient(175deg, #e5f6ed 0%, #f8fff9 30%, #eefaf3 60%, #d0eadc 100%);
+    background-attachment: fixed;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Navigation ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 16px 24px;
+    display: flex; justify-content: space-between; align-items: center;
+    backdrop-filter: blur(12px);
+    background: rgba(248, 255, 251, 0.7);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: var(--mint-700); }
+  .nav-logo img { height: 28px; }
+  .nav-links { display: flex; gap: 24px; align-items: center; }
+  .nav-links a { text-decoration: none; color: var(--muted); font-size: 14px; font-weight: 500; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--mint-600); }
+  .nav-cta {
+    background: var(--mint-500); color: #fff !important;
+    padding: 8px 18px; border-radius: 100px; font-weight: 600;
+    transition: background 0.2s, transform 0.15s;
+  }
+  .nav-cta:hover { background: var(--mint-600); transform: scale(1.03); }
+
+  /* ── Sections ── */
+  section { padding: 100px 24px; max-width: 1100px; margin: 0 auto; }
+
+  /* ── Hero ── */
+  .hero {
+    min-height: 100svh;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; position: relative; overflow: hidden;
+    padding-top: 80px;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(63, 159, 121, 0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 80% at 20% 80%, rgba(158, 219, 192, 0.15) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 80% 80%, rgba(204, 235, 220, 0.15) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-content { position: relative; z-index: 1; max-width: 680px; }
+  .hero-companion { width: 180px; margin-bottom: 24px; animation: float 4s ease-in-out infinite; }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+  .hero-badge {
+    display: inline-block; background: var(--mint-200); color: var(--mint-700);
+    padding: 6px 16px; border-radius: 100px; font-size: 13px; font-weight: 600;
+    margin-bottom: 20px; letter-spacing: 0.02em;
+  }
+  .hero h1 {
+    font-size: clamp(40px, 8vw, 72px); font-weight: 800; line-height: 1.08;
+    letter-spacing: -0.03em; color: var(--mint-900); margin-bottom: 16px;
+  }
+  .hero h1 span { color: var(--mint-500); }
+  .hero p {
+    font-size: 19px; color: var(--muted); max-width: 480px; margin: 0 auto 36px;
+    line-height: 1.5;
+  }
+  .hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 28px; border-radius: 100px; font-size: 15px; font-weight: 600;
+    text-decoration: none; transition: all 0.2s; border: none; cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--mint-500); color: #fff;
+    box-shadow: 0 4px 20px rgba(63, 159, 121, 0.3);
+  }
+  .btn-primary:hover { background: var(--mint-600); transform: translateY(-1px); box-shadow: 0 6px 28px rgba(63, 159, 121, 0.4); }
+  .btn-outline {
+    background: rgba(255,255,255,0.6); color: var(--mint-700);
+    border: 1.5px solid var(--line-strong); backdrop-filter: blur(8px);
+  }
+  .btn-outline:hover { background: rgba(255,255,255,0.85); border-color: var(--mint-400); }
+
+  /* ── Features ── */
+  .features { padding: 120px 24px; }
+  .features-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px;
+    max-width: 1000px; margin: 0 auto;
+  }
+  .feature {
+    text-align: center; padding: 48px 28px;
+    background: var(--card-bg); border: 1px solid var(--line);
+    border-radius: 24px; backdrop-filter: blur(8px);
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  .feature:hover { transform: translateY(-4px); box-shadow: 0 20px 50px rgba(42, 111, 83, 0.1); }
+  .feature-icon { width: 100px; height: 100px; margin: 0 auto 20px; }
+  .feature-icon img { width: 100%; height: 100%; object-fit: contain; }
+  .feature h3 { font-size: 20px; font-weight: 700; color: var(--mint-800); margin-bottom: 8px; }
+  .feature p { font-size: 15px; color: var(--muted); line-height: 1.5; }
+
+  /* ── Companion Gallery ── */
+  .companions { background: rgba(255,255,255,0.3); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .companions-inner { max-width: 1000px; margin: 0 auto; padding: 100px 24px; text-align: center; }
+  .companions h2 { font-size: 36px; font-weight: 800; color: var(--mint-900); margin-bottom: 12px; letter-spacing: -0.02em; }
+  .companions-sub { color: var(--muted); font-size: 17px; max-width: 480px; margin: 0 auto 56px; }
+  .companion-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;
+  }
+  .companion-card {
+    padding: 24px 16px; background: var(--card-bg); border: 1px solid var(--line);
+    border-radius: 20px; backdrop-filter: blur(8px);
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  .companion-card:hover { transform: translateY(-4px) scale(1.03); box-shadow: 0 16px 40px rgba(42, 111, 83, 0.12); }
+  .companion-card img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; }
+  .companion-card .name { font-size: 13px; font-weight: 600; color: var(--mint-600); }
+
+  /* ── Demo ── */
+  .demo { text-align: center; }
+  .demo h2 { font-size: 36px; font-weight: 800; color: var(--mint-900); margin-bottom: 12px; letter-spacing: -0.02em; }
+  .demo-sub { color: var(--muted); font-size: 17px; max-width: 480px; margin: 0 auto 48px; }
+  .demo-media {
+    max-width: 800px; margin: 0 auto;
+    background: var(--card-bg); border: 1px solid var(--line);
+    border-radius: 24px; overflow: hidden; backdrop-filter: blur(8px);
+    box-shadow: 0 20px 60px rgba(42, 111, 83, 0.08);
+  }
+  .demo-media img { width: 100%; display: block; }
+
+  /* ── CTA ── */
+  .cta { text-align: center; padding: 120px 24px; }
+  .cta h2 { font-size: 36px; font-weight: 800; color: var(--mint-900); margin-bottom: 12px; letter-spacing: -0.02em; }
+  .cta p { color: var(--muted); font-size: 17px; max-width: 480px; margin: 0 auto 36px; }
+  .cta-platforms { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+  .platform-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px; border-radius: 100px; font-size: 14px; font-weight: 600;
+    text-decoration: none; background: rgba(255,255,255,0.6); color: var(--mint-700);
+    border: 1.5px solid var(--line-strong); backdrop-filter: blur(8px);
+    transition: all 0.2s;
+  }
+  .platform-btn:hover { background: rgba(255,255,255,0.85); border-color: var(--mint-400); transform: translateY(-1px); }
+  .cta-note { font-size: 13px; color: var(--muted); }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center; padding: 40px 24px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 13px;
+  }
+  footer a { color: var(--mint-600); text-decoration: none; font-weight: 500; }
+  footer a:hover { text-decoration: underline; }
+
+  /* ── Scroll Reveal ── */
+  .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease-out, transform 0.7s ease-out; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .features-grid { grid-template-columns: 1fr; gap: 24px; }
+    .companion-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .hero h1 { font-size: 36px; }
+    .hero p { font-size: 16px; }
+    .nav-links { gap: 12px; }
+    .nav-links a { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <div class="nav-logo">
+    <img src="assets/lil-buddy-logo.png" alt="" />
+    Lil Buddy
+  </div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#companions">Companions</a>
+    <a href="#demo">Demo</a>
+    <a href="#download" class="nav-cta">Download</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-content">
+    <img class="hero-companion" src="assets/tan-explorer.png" alt="Lil Buddy companion" />
+    <div class="hero-badge">Developer Preview</div>
+    <h1>Your desktop AI <span>buddy</span></h1>
+    <p>A local-first helper with animated companions that walk, think, and vibe right on your desktop.</p>
+    <div class="hero-actions">
+      <a href="#download" class="btn btn-primary">Download for free</a>
+      <a href="https://github.com/OnPoint-Dev-Tools/lil-buddy" class="btn btn-outline" target="_blank">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+  <div class="features-grid">
+    <div class="feature reveal">
+      <div class="feature-icon"><img src="assets/green-scout.png" alt="" /></div>
+      <h3>They walk</h3>
+      <p>Your buddy strolls across the desktop with 8 unique characters, each with full sprite-sheet animations.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="feature-icon"><img src="assets/blue-hoodie.png" alt="" /></div>
+      <h3>They think</h3>
+      <p>Connect to Claude or OpenCode. Each buddy gets their own AI session — chat, plan, code, or search together.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="feature-icon"><img src="assets/pink-hood.png" alt="" /></div>
+      <h3>They vibe</h3>
+      <p>Custom themes, Telegram gateway, expert personas, and system tray controls — all local-first and private.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Companion Gallery -->
+<section class="companions" id="companions">
+  <div class="companions-inner">
+    <h2 class="reveal">Meet the crew</h2>
+    <p class="companions-sub reveal">Eight hand-crafted companions, each with their own personality and style.</p>
+    <div class="companion-grid">
+      <div class="companion-card reveal"><img src="assets/tan-explorer.png" alt="" /><div class="name">Tan Explorer</div></div>
+      <div class="companion-card reveal"><img src="assets/red-beanie.png" alt="" /><div class="name">Red Beanie</div></div>
+      <div class="companion-card reveal"><img src="assets/blue-hoodie.png" alt="" /><div class="name">Blue Hoodie</div></div>
+      <div class="companion-card reveal"><img src="assets/green-scout.png" alt="" /><div class="name">Green Scout</div></div>
+      <div class="companion-card reveal"><img src="assets/lavender-bear.png" alt="" /><div class="name">Lavender Bear</div></div>
+      <div class="companion-card reveal"><img src="assets/pink-hood.png" alt="" /><div class="name">Pink Hood</div></div>
+      <div class="companion-card reveal"><img src="assets/yellow-rain.png" alt="" /><div class="name">Yellow Rain</div></div>
+      <div class="companion-card reveal"><img src="assets/autumn-vest.png" alt="" /><div class="name">Autumn Vest</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Demo -->
+<section class="demo" id="demo">
+  <h2 class="reveal">See it in action</h2>
+  <p class="demo-sub reveal">Expert switching, companion animations, and a clean UI that stays out of your way.</p>
+  <div class="demo-media reveal">
+    <img src="assets/expert-switching.gif" alt="Lil Buddy expert switching demo" />
+  </div>
+</section>
+
+<!-- Download CTA -->
+<section class="cta" id="download">
+  <h2 class="reveal">Bring a buddy to your desktop</h2>
+  <p class="reveal">Free and open source. Runs on Windows, macOS, and Linux.</p>
+  <div class="cta-platforms reveal">
+    <a href="https://github.com/OnPoint-Dev-Tools/lil-buddy/releases" class="platform-btn" target="_blank">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0l11.955 24L24 0zm13.365 5.48h-2.64l-3.42 12.315h2.145L11.04 12.9h5.715l.405 1.485h-2.25zm-1.125 5.685l1.875-6.6 1.755 6.6z"/></svg>
+      Windows
+    </a>
+    <a href="https://github.com/OnPoint-Dev-Tools/lil-buddy/releases" class="platform-btn" target="_blank">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+      macOS
+    </a>
+    <a href="https://github.com/OnPoint-Dev-Tools/lil-buddy/releases" class="platform-btn" target="_blank">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.001.007c-6.623 0-12 5.377-12 12s5.377 12 12 12 12-5.377 12-12-5.377-12-12-12zm.06 2.693c5.133 0 9.3 4.167 9.3 9.3 0 5.133-4.167 9.3-9.3 9.3-5.133 0-9.3-4.167-9.3-9.3 0-5.133 4.167-9.3 9.3-9.3zm-.182 2.006c-.884 0-1.67.48-2.083 1.246-.094.173-.15.37-.15.574 0 .77.62 1.393 1.39 1.393.882 0 1.668-.482 2.08-1.248.094-.172.15-.37.15-.574 0-.77-.622-1.391-1.387-1.391zm-3.005 3.172h-.034c-.76 0-1.388.57-1.388 1.333v7.406c0 .763.628 1.285 1.388 1.285.76 0 1.388-.522 1.388-1.286V9.212c0-.763-.628-1.334-1.354-1.334zm6.119 0c-.76 0-1.388.57-1.388 1.333v7.406c0 .763.628 1.285 1.388 1.285s1.388-.522 1.388-1.286V9.212c0-.763-.628-1.334-1.388-1.334z"/></svg>
+      Linux
+    </a>
+  </div>
+  <p class="cta-note reveal">Developer Preview — unsigned builds may show OS warnings</p>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>© 2026 <a href="https://github.com/OnPoint-Dev-Tools" target="_blank">OnPoint Dev Tools</a> &mdash; Built with Tauri &middot; <a href="https://github.com/OnPoint-Dev-Tools/lil-buddy/blob/main/LICENSE" target="_blank">MIT License</a></p>
+</footer>
+
+<script>
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // Companion shuffle in hero — cycle through companions every 6 seconds
+  const heroImg = document.querySelector('.hero-companion');
+  const companions = [
+    'assets/tan-explorer.png', 'assets/red-beanie.png', 'assets/blue-hoodie.png',
+    'assets/green-scout.png', 'assets/lavender-bear.png', 'assets/pink-hood.png',
+    'assets/yellow-rain.png', 'assets/autumn-vest.png'
+  ];
+  let idx = 0;
+  setInterval(() => {
+    idx = (idx + 1) % companions.length;
+    heroImg.style.opacity = '0';
+    heroImg.style.transform = 'translateY(20px)';
+    setTimeout(() => {
+      heroImg.src = companions[idx];
+      heroImg.style.opacity = '1';
+      heroImg.style.transform = 'translateY(0)';
+    }, 300);
+  }, 6000);
+  heroImg.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+</script>
+</body>
+</html>
