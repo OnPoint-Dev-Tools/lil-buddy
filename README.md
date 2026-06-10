@@ -30,9 +30,11 @@
 
 <div align="center">
 
-<img src="docs/assets/intro.gif" alt="Lil Buddy intro" width="45%" />
-<img src="docs/assets/expert-switching.gif" alt="Expert switching" width="45%" />
+<img src="docs/assets/intro.gif" alt="Lil Buddy intro" width="50%" />
 
+</div>
+<div align="center">
+<img src="docs/assets/expert-switching.gif" alt="Expert switching" width="45%" />
 </div>
 
 ## Screenshots
@@ -69,6 +71,7 @@ It is not mainly a coding app. Coding help is one ability. Lil Buddy is meant to
 
 ## Features
 
+- Different Animations for companions like walking, saying hi, etc
 - Local-first AI helper experience
 - Expert/persona switching
 - Chat sessions and tabs
