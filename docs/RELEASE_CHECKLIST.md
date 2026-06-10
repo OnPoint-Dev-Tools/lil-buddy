@@ -24,20 +24,20 @@
 
 ## Packaging
 
-- [ ] Windows build tested
+- [x] Windows build tested
 - [ ] macOS build tested
-- [ ] Linux build tested
-- [ ] App icon and tray icon checked
-- [ ] Version number set
-- [ ] Changelog updated
-- [ ] Checksums generated
+- [x] Linux build tested
+- [x] App icon and tray icon checked
+- [x] Version number set
+- [x] Changelog updated
+- [x] Checksums generated
 
 ## Signing
 
 - [ ] macOS signing investigated
 - [ ] macOS notarization investigated
-- [ ] Windows signing certificate investigated
-- [ ] Unsigned build warnings documented if signing is not ready
+- [x] Windows signing certificate investigated
+- [x] Unsigned build warnings documented if signing is not ready
 
 ## Repository
 
@@ -49,6 +49,5 @@
 - [x] PRIVACY present
 - [x] FUNDING placeholders updated
 - [x] Issue templates added
-- [ ] Screenshots added
+- [x] Screenshots added
 - [ ] Demo GIF/video added
-

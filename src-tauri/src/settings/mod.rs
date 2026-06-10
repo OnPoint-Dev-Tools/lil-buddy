@@ -110,6 +110,16 @@ impl Default for AppSettings {
 }
 
 impl AppSettings {
+    fn normalize_provider_commands(&mut self) {
+        if self.opencode_command.trim().is_empty() {
+            self.opencode_command = "opencode".to_string();
+        }
+
+        if self.claude_command.trim().is_empty() {
+            self.claude_command = "claude".to_string();
+        }
+    }
+
     fn strip_runtime_env_fields(&mut self) {
         if self.telegram_bot_token_from_env {
             self.telegram_bot_token.clear();
@@ -168,6 +178,7 @@ pub fn load_settings(app: &AppHandle) -> AppSettings {
         Err(_) => AppSettings::default(),
     };
 
+    settings.normalize_provider_commands();
     apply_env_fallbacks(&mut settings);
     settings
 }

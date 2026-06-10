@@ -386,7 +386,7 @@ export function ExpertsPanel(props: {
 
                     <div className="lm-modal-footer">
                       <button className="lm-secondary-btn" onClick={removeEditing}>Delete</button>
-                      <button className="lm-primary-btn" onClick={() => choose(editing)}>Use this expert</button>
+                      <button className="lm-primary-btn" onClick={() => { choose(editing); setModalOpen(false); }}>Use this expert</button>
                     </div>
                   </section>
                 ) : null}

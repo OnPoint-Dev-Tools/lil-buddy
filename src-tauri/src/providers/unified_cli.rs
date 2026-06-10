@@ -1,7 +1,8 @@
 use std::{
+    env,
     io::{BufRead, BufReader, Write},
-    path::Path,
-    process::{Child, Command, Stdio},
+    path::{Path, PathBuf},
+    process::{Child, Command, Output, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex, OnceLock,
@@ -53,6 +54,7 @@ pub struct AiCliContext {
     pub claude_command: String,
     pub claude_output_format: String,
     pub selected_model: Option<String>,
+    pub session_id: Option<String>,
 }
 
 impl AiCliContext {
@@ -66,6 +68,7 @@ impl AiCliContext {
             claude_command: settings.claude_command.clone(),
             claude_output_format: settings.claude_output_format.clone(),
             selected_model: settings.selected_model.clone(),
+            session_id: None,
         }
     }
 }
@@ -86,6 +89,7 @@ impl AiCliAdapter for OpenCodeGoAdapter {
             &context.opencode_provider_key,
             context.workspace_path.clone(),
             context.selected_model.clone(),
+            context.session_id.clone(),
         )
     }
 }
@@ -98,6 +102,7 @@ impl AiCliAdapter for ClaudeAdapter {
             &context.claude_output_format,
             context.workspace_path.clone(),
             context.selected_model.clone(),
+            context.session_id.clone(),
         )
     }
 }
@@ -302,20 +307,45 @@ pub fn command_exists(command: &str) -> bool {
     resolve_command_path(command).is_some()
 }
 
-#[cfg(target_os = "windows")]
-fn resolve_command_path(command: &str) -> Option<String> {
+pub fn command_output(command: &str, args: &[String]) -> std::io::Result<Output> {
+    let resolved = resolve_command_path(command).unwrap_or_else(|| command.trim().to_string());
+    build_process_command(&resolved, args).output()
+}
+
+pub fn resolve_command_path(command: &str) -> Option<String> {
     let trimmed = command.trim();
 
     if trimmed.is_empty() {
         return None;
     }
 
-    if trimmed.contains('\\') || trimmed.contains('/') || trimmed.contains(':') {
-        let path = std::path::Path::new(trimmed);
-        return path.exists().then(|| trimmed.to_string());
+    if let Some(path) = resolve_literal_command_path(trimmed) {
+        return Some(path);
     }
 
-    let output = Command::new("where.exe").arg(trimmed).output().ok()?;
+    if let Some(path) = resolve_from_process_lookup(trimmed) {
+        return Some(path);
+    }
+
+    resolve_from_common_bin_dirs(trimmed)
+}
+
+fn resolve_literal_command_path(command: &str) -> Option<String> {
+    if command.contains(std::path::MAIN_SEPARATOR)
+        || command.contains('/')
+        || command.contains('\\')
+        || Path::new(command).is_absolute()
+        || cfg!(target_os = "windows") && command.contains(':')
+    {
+        return canonical_or_original_if_exists(Path::new(command));
+    }
+
+    None
+}
+
+#[cfg(target_os = "windows")]
+fn resolve_from_process_lookup(command: &str) -> Option<String> {
+    let output = Command::new("where.exe").arg(command).output().ok()?;
     if !output.status.success() {
         return None;
     }
@@ -331,23 +361,8 @@ fn resolve_command_path(command: &str) -> Option<String> {
     matches.into_iter().next()
 }
 
-#[cfg(target_os = "windows")]
-fn windows_command_priority(path: &str) -> u8 {
-    let extension = Path::new(path)
-        .extension()
-        .and_then(|value| value.to_str())
-        .map(|value| value.to_ascii_lowercase());
-
-    match extension.as_deref() {
-        Some("cmd") => 0,
-        Some("bat") => 1,
-        Some("exe") => 2,
-        _ => 3,
-    }
-}
-
 #[cfg(not(target_os = "windows"))]
-fn resolve_command_path(command: &str) -> Option<String> {
+fn resolve_from_process_lookup(command: &str) -> Option<String> {
     Command::new("sh")
         .arg("-c")
         .arg(format!("command -v {}", shell_escape_for_sh(command)))
@@ -362,6 +377,159 @@ fn resolve_command_path(command: &str) -> Option<String> {
                 .find(|line| !line.is_empty())
                 .map(|line| line.to_string())
         })
+}
+
+fn resolve_from_common_bin_dirs(command: &str) -> Option<String> {
+    common_bin_dirs()
+        .into_iter()
+        .find_map(|dir| resolve_in_dir(&dir, command))
+}
+
+fn resolve_in_dir(dir: &Path, command: &str) -> Option<String> {
+    candidate_command_paths(dir, command)
+        .into_iter()
+        .find_map(|candidate| canonical_or_original_if_exists(&candidate))
+}
+
+fn canonical_or_original_if_exists(path: &Path) -> Option<String> {
+    if !path.exists() {
+        return None;
+    }
+
+    std::fs::canonicalize(path)
+        .ok()
+        .or_else(|| Some(path.to_path_buf()))
+        .map(|value| value.to_string_lossy().to_string())
+}
+
+fn common_bin_dirs() -> Vec<PathBuf> {
+    let mut dirs = env::var_os("PATH")
+        .map(|value| env::split_paths(&value).collect::<Vec<_>>())
+        .unwrap_or_default();
+
+    dirs.extend(platform_fallback_bin_dirs());
+    uniq_paths(dirs)
+}
+
+fn uniq_paths(paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut unique = Vec::new();
+
+    for path in paths {
+        if path.as_os_str().is_empty() {
+            continue;
+        }
+
+        if !unique.iter().any(|existing| existing == &path) {
+            unique.push(path);
+        }
+    }
+
+    unique
+}
+
+#[cfg(target_os = "windows")]
+fn candidate_command_paths(dir: &Path, command: &str) -> Vec<PathBuf> {
+    let base = dir.join(command);
+    let extension = Path::new(command)
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase());
+
+    if extension.is_some() {
+        return vec![base];
+    }
+
+    let pathext = env::var("PATHEXT")
+        .unwrap_or(".COM;.EXE;.BAT;.CMD".to_string())
+        .split(';')
+        .filter_map(|value| {
+            let trimmed = value.trim().trim_start_matches('.');
+            (!trimmed.is_empty()).then(|| trimmed.to_ascii_lowercase())
+        })
+        .collect::<Vec<_>>();
+
+    let mut candidates = vec![base.clone()];
+    candidates.extend(pathext.into_iter().map(|ext| dir.join(format!("{}.{}", command, ext))));
+    candidates
+}
+
+#[cfg(not(target_os = "windows"))]
+fn candidate_command_paths(dir: &Path, command: &str) -> Vec<PathBuf> {
+    vec![dir.join(command)]
+}
+
+#[cfg(target_os = "windows")]
+fn platform_fallback_bin_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+
+    if let Some(user_profile) = env::var_os("USERPROFILE") {
+        let home = PathBuf::from(&user_profile);
+        dirs.push(home.join(".bun/bin"));
+        dirs.push(home.join(".cargo/bin"));
+        dirs.push(home.join("scoop/shims"));
+    }
+
+    if let Some(app_data) = env::var_os("APPDATA") {
+        dirs.push(PathBuf::from(app_data).join("npm"));
+    }
+
+    if let Some(local_app_data) = env::var_os("LOCALAPPDATA") {
+        let local = PathBuf::from(local_app_data);
+        dirs.push(local.join("pnpm"));
+        dirs.push(local.join("Volta/bin"));
+        dirs.push(local.join("mise/shims"));
+        dirs.push(local.join("Yarn/bin"));
+    }
+
+    if let Some(nvm_symlink) = env::var_os("NVM_SYMLINK") {
+        dirs.push(PathBuf::from(nvm_symlink));
+    }
+
+    dirs
+}
+
+#[cfg(not(target_os = "windows"))]
+fn platform_fallback_bin_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+
+    if let Some(home) = env::var_os("HOME") {
+        let home = PathBuf::from(home);
+        dirs.push(home.join(".cache/.bun/bin"));
+        dirs.push(home.join(".bun/bin"));
+        dirs.push(home.join(".local/bin"));
+        dirs.push(home.join(".local/share/pnpm"));
+        dirs.push(home.join(".volta/bin"));
+        dirs.push(home.join(".asdf/shims"));
+        dirs.push(home.join(".fnm/aliases/default/bin"));
+        dirs.push(home.join(".yarn/bin"));
+        dirs.push(home.join(".config/yarn/global/node_modules/.bin"));
+        dirs.push(home.join(".npm-global/bin"));
+        dirs.push(home.join(".cargo/bin"));
+        dirs.push(home.join(".local/share/mise/shims"));
+    }
+
+    dirs.push(PathBuf::from("/opt/homebrew/bin"));
+    dirs.push(PathBuf::from("/opt/homebrew/sbin"));
+    dirs.push(PathBuf::from("/usr/local/bin"));
+    dirs.push(PathBuf::from("/usr/local/sbin"));
+    dirs.push(PathBuf::from("/home/linuxbrew/.linuxbrew/bin"));
+
+    dirs
+}
+
+#[cfg(target_os = "windows")]
+fn windows_command_priority(path: &str) -> u8 {
+    let extension = Path::new(path)
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase());
+
+    match extension.as_deref() {
+        Some("cmd") => 0,
+        Some("bat") => 1,
+        Some("exe") => 2,
+        _ => 3,
+    }
 }
 
 pub fn command_version(command: &str) -> Option<String> {
@@ -386,14 +554,14 @@ pub fn command_version(command: &str) -> Option<String> {
 pub fn provider_auth_status(command: &str) -> bool {
     let resolved = resolve_command_path(command).unwrap_or_else(|| command.to_string());
 
-    if command == "opencode" || command == "opencode-go" {
+    if command_basename_matches(command, &["opencode", "opencode-go"]) {
         let output = Command::new(&resolved).args(["auth", "list"]).output();
         if let Ok(output) = output {
             return output.status.success();
         }
     }
 
-    if command == "claude" || command.ends_with("/claude") {
+    if command_basename_matches(command, &["claude"]) {
         let output = Command::new(&resolved).arg("--version").output();
         if let Ok(output) = output {
             return output.status.success();
@@ -401,6 +569,22 @@ pub fn provider_auth_status(command: &str) -> bool {
     }
 
     command_exists(command)
+}
+
+fn command_basename_matches(command: &str, expected: &[&str]) -> bool {
+    let lowered = Path::new(command)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or(command)
+        .to_ascii_lowercase();
+
+    expected.iter().any(|candidate| {
+        let candidate = candidate.to_ascii_lowercase();
+        lowered == candidate
+            || lowered == format!("{}.exe", candidate)
+            || lowered == format!("{}.cmd", candidate)
+            || lowered == format!("{}.bat", candidate)
+    })
 }
 
 fn spawn_stdout_reader(app: AppHandle, provider_id: String, stdout: impl std::io::Read + Send + 'static) {

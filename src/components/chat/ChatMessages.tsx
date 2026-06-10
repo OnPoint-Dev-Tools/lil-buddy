@@ -257,7 +257,7 @@ export function ChatMessages(props: { messages: StreamLine[]; running: boolean; 
           <ExpertAvatar expert={props.expert} />
           <div className="lm-chat-content">
             <div className="lm-chat-author">{assistantName(props.expert)}</div>
-            <MarkdownMessage text="Hey, I’m ready. Ask me to inspect the repo, explain a file, run a safe check, or make a plan." />
+            <MarkdownMessage text="Hey, I’m ready to help you plan, organize ideas, explain files, or what ever you want 😁 and keep you updated while I work." />
           </div>
         </div>
       ) : null}

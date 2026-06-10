@@ -1,40 +1,36 @@
-# Code signing notes
+# Code Signing Notes
 
-For a private test build, unsigned apps are acceptable.
+## Status: Developer Preview
 
-For public users, signing is strongly recommended.
+This release is an **unsigned Developer Preview**. Operating systems may show security warnings when running unsigned binaries. This is expected and documented below.
 
-## macOS
+---
 
-You generally need:
+### Unsigned build warnings
 
-- Apple Developer account
-- Developer ID Application certificate
-- app signing
-- notarization
-- stapling
+**When running an unsigned Lil Buddy on Windows:**
 
-Unsigned macOS apps may trigger Gatekeeper warnings.
+1. **SmartScreen**: You'll see "Windows protected your PC" with a "More info" link. Click "More info" → "Run anyway".
+2. **Browser download warning**: Chrome/Edge may flag `.exe` downloads. Users should click "Keep" in the downloads bar.
+3. **Antivirus**: Some AV software may quarantine the file. Users may need to add an exception or restore from quarantine.
 
-## Windows
+We publish SHA256 checksums (`SHA256SUMS`) so users can verify the file hasn't been tampered with:
 
-You generally need:
+```powershell
+certutil -hashfile .\Lil-Buddy_0.1.0_x64-setup.exe SHA256
+```
 
-- code signing certificate
-- signed installer/executable
-- time stamping
+---
 
-Unsigned Windows apps may trigger SmartScreen warnings.
+## Linux Signing
 
-## Linux
+### Status: Checksums only
 
-Linux distribution is less centralized. Consider:
+Linux desktop apps typically don't use code signing certificates. Instead:
 
-- AppImage / deb / rpm
-- checksums
-- signed package repositories later
-- clear install docs
+- **Checksums** are published for verification (`SHA256SUMS`)
+- **Package repository signing** (apt/yum GPG keys) is the standard path for `.deb`/`.rpm` distribution
 
-## Developer Preview note
+For the Developer Preview, SHA256 checksums are sufficient. GPG package signing can be added when publishing to a package repository.
 
-If signing is not ready, clearly label downloads as experimental unsigned Developer Preview builds and explain expected OS warnings.
+---

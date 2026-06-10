@@ -15,7 +15,7 @@
     "dev:desktop": "tauri dev",
     "package": "npm run build:desktop",
     "package:debug": "npm run tauri build -- --debug",
-    "package:linux:appimage": "./scripts/package-linux-appimage.sh"
+    "package:linux:appimage": "bash ./scripts/package-linux-appimage.sh"
   },
   "dependencies": {
     "@tauri-apps/api": "2.0.0",

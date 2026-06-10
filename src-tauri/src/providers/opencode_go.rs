@@ -7,6 +7,7 @@ pub fn build(
     opencode_provider_key: &str,
     workspace: Option<String>,
     selected_model: Option<String>,
+    session_id: Option<String>,
 ) -> Result<ProviderInvocation, String> {
     match mode {
         "run-formatted" => build_run_formatted(
@@ -15,6 +16,7 @@ pub fn build(
             opencode_command,
             opencode_provider_key,
             selected_model,
+            session_id,
         ),
         "run-stdin" => build_run_stdin(
             prompt,
@@ -22,25 +24,33 @@ pub fn build(
             opencode_command,
             opencode_provider_key,
             selected_model,
+            session_id,
         ),
-        "raw-arg" => build_raw_arg(prompt, opencode_command, opencode_provider_key),
+        "raw-arg" => build_raw_arg(prompt, opencode_command, opencode_provider_key, session_id),
         _ => build_run_json(
             prompt,
             workspace,
             opencode_command,
             opencode_provider_key,
             selected_model,
+            session_id,
         ),
     }
 }
 
-fn base_run_args(workspace: Option<String>, selected_model: Option<String>) -> Vec<String> {
+fn base_run_args(workspace: Option<String>, selected_model: Option<String>, session_id: Option<String>) -> Vec<String> {
     let mut args = vec!["run".to_string()];
 
     if let Some(dir) = workspace {
         if !dir.trim().is_empty() {
             args.push("--dir".to_string());
             args.push(dir);
+        }
+    }
+
+    if let Some(id) = session_id {
+        if !id.trim().is_empty() {
+            args.push("--continue".to_string());
         }
     }
 
@@ -64,8 +74,9 @@ fn build_run_json(
     command: &str,
     provider_key: &str,
     selected_model: Option<String>,
+    session_id: Option<String>,
 ) -> Result<ProviderInvocation, String> {
-    let mut args = base_run_args(workspace.clone(), selected_model);
+    let mut args = base_run_args(workspace.clone(), selected_model, session_id);
     args.push("--thinking".to_string());
     args.push("--format".to_string());
     args.push("json".to_string());
@@ -87,8 +98,9 @@ fn build_run_formatted(
     command: &str,
     provider_key: &str,
     selected_model: Option<String>,
+    session_id: Option<String>,
 ) -> Result<ProviderInvocation, String> {
-    let mut args = base_run_args(workspace.clone(), selected_model);
+    let mut args = base_run_args(workspace.clone(), selected_model, session_id);
     args.push(prompt.to_string());
 
     Ok(ProviderInvocation {
@@ -107,8 +119,9 @@ fn build_run_stdin(
     command: &str,
     provider_key: &str,
     selected_model: Option<String>,
+    session_id: Option<String>,
 ) -> Result<ProviderInvocation, String> {
-    let args = base_run_args(workspace.clone(), selected_model);
+    let args = base_run_args(workspace.clone(), selected_model, session_id);
 
     Ok(ProviderInvocation {
         command: command.to_string(),
@@ -129,8 +142,15 @@ fn build_raw_arg(
     prompt: &str,
     command: &str,
     provider_key: &str,
+    session_id: Option<String>,
 ) -> Result<ProviderInvocation, String> {
-    let args = vec![prompt.to_string()];
+    let mut args = Vec::new();
+    if let Some(id) = session_id {
+        if !id.trim().is_empty() {
+            args.push("--continue".to_string());
+        }
+    }
+    args.push(prompt.to_string());
 
     Ok(ProviderInvocation {
         command: command.to_string(),

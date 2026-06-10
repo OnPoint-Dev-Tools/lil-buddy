@@ -119,6 +119,8 @@ fn main() {
             commands::gateways::stop_telegram_gateway,
             commands::gateways::telegram_gateway_running,
             commands::workspace_sessions::load_workspace_session,
+            commands::workspace_sessions::get_workspace_session,
+            commands::workspace_sessions::sync_workspace_session,
             commands::workspace_sessions::save_workspace_session,
             commands::workspace_sessions::list_workspace_sessions,
             commands::settings::save_workspace_path,
@@ -132,5 +134,5 @@ fn main() {
             commands::safety::classify_command_risk,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running lil man");
+        .expect("error while running lil buddy");
 }

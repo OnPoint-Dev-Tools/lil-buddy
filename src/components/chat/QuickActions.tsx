@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { showToast } from './Toast';
 
 const QUICK_ACTIONS_KEY = 'lil-buddy-quick-actions-v1';
 const DEFAULT_ACTIONS = [
@@ -37,6 +38,7 @@ export function QuickActions(props: {
   onPick: (prompt: string) => void;
 }) {
   const [actions, setActions] = useState<string[]>(() => loadActions());
+  const [savedNotice, setSavedNotice] = useState(false);
 
   useEffect(() => {
     if (!props.open) return;
@@ -67,6 +69,9 @@ export function QuickActions(props: {
     const saved = next.length > 0 ? next : DEFAULT_ACTIONS;
     setActions(saved);
     saveActions(saved);
+    showToast('Saved prompts', 'success');
+    setSavedNotice(true);
+    setTimeout(() => setSavedNotice(false), 2000);
   }
 
   return (
@@ -109,6 +114,11 @@ export function QuickActions(props: {
             <button type="button" className="lm-secondary-btn" onClick={addAction}>Add prompt</button>
             <button type="button" className="lm-primary-btn" onClick={persistActions}>Save prompts</button>
           </div>
+          {savedNotice ? (
+            <div className="lm-settings-success" style={{ marginTop: 8 }}>
+              Saved prompts
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

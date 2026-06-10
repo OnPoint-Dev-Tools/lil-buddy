@@ -29,6 +29,7 @@ import {
   loadSettings,
   saveLaunchAtStartup,
   saveOpenCodeGoMode,
+  saveOpenCodeCommand,
   saveClaudeCommand,
   saveClaudeOutputFormat,
   saveSafetyMode,
@@ -58,6 +59,7 @@ import commandPreview from '../../assets/companions/tan-explorer-v2/command/03.p
 import donePreview from '../../assets/companions/tan-explorer-v2/done/03.png';
 import errorPreview from '../../assets/companions/tan-explorer-v2/error/03.png';
 import { companionCharacters, getSavedCompanionCharacterId, saveCompanionCharacterId } from '../../lib/companions';
+import { showToast } from './Toast';
 
 function settingsIcon(Icon: LucideIcon) {
   return <Icon size={16} strokeWidth={2.2} />;
@@ -186,6 +188,7 @@ export function SettingsPanel(props: {
   const [telegramGatewayError, setTelegramGatewayError] = useState<string | null>(null);
   const [telegramGatewayNotice, setTelegramGatewayNotice] = useState<string | null>(null);
   const [telegramOpen, setTelegramOpen] = useState(false);
+  const [settingsSavedNotice, setSettingsSavedNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (settings?.companion_character_id) {
@@ -195,6 +198,7 @@ export function SettingsPanel(props: {
 
   useEffect(() => {
     if (!props.open) return;
+    setSettingsSavedNotice(null);
     setSelectedCharacterId(getSavedCompanionCharacterId());
     loadSettings().then((nextSettings) => { setSettings({ ...nextSettings, opencode_go_mode: 'run-json', claude_output_format: 'stream-json' }); applyThemeAccent(nextSettings.theme_accent); }).catch(() => {});
   }, [props.open]);
@@ -327,6 +331,7 @@ export function SettingsPanel(props: {
         : 'honey';
       await saveSelectedProvider(provider);
       await saveOpenCodeGoMode(mode);
+      await saveOpenCodeCommand(settings.opencode_command ?? 'opencode');
       await saveClaudeCommand(settings.claude_command ?? 'claude');
       await saveClaudeOutputFormat('stream-json');
       await saveSafetyMode(safety);
@@ -342,6 +347,7 @@ export function SettingsPanel(props: {
       props.onProviderChange(provider);
       props.onModeChange(mode);
       props.onUserNameChange?.(settings.user_name ?? '');
+      showToast('Settings saved', 'success');
       props.onClose();
     } finally {
       setSaving(false);
@@ -416,6 +422,20 @@ export function SettingsPanel(props: {
                   onChange={(event) => patch({ default_directory: event.target.value })}
                 />
                 <small>Used when no expert/workspace folder is selected. This prevents Lil Buddy from defaulting to your home folder if you prefer another safe directory.</small>
+              </label>
+            </section>
+
+            <section className="lm-settings-section">
+              <h3>OpenCode CLI</h3>
+              <label className="lm-settings-field">
+                <span>OpenCode command/path</span>
+                <input
+                  className="lm-settings-input"
+                  value={settings.opencode_command ?? 'opencode'}
+                  placeholder="opencode"
+                  onChange={(event) => patch({ opencode_command: event.target.value })}
+                />
+                <small>Leave as <code>opencode</code> to detect from PATH or common Bun/npm locations, or use a full path.</small>
               </label>
             </section>
 
@@ -685,6 +705,12 @@ export function SettingsPanel(props: {
                 />
               </label>
             </section>
+
+            {settingsSavedNotice ? (
+              <div className="lm-settings-success" style={{ margin: '0 0 10px' }}>
+                {settingsSavedNotice}
+              </div>
+            ) : null}
 
             <div className="lm-modal-footer">
               <button className="lm-secondary-btn" onClick={props.onClose}>

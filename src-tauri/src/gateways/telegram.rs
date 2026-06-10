@@ -481,7 +481,7 @@ fn handle_expert_command(app: &AppHandle, settings: &AppSettings, token: &str, c
         return;
     }
 
-    if matches!(query.to_ascii_lowercase().as_str(), "0" | "default" | "lil man" | "default lil man") {
+    if matches!(query.to_ascii_lowercase().as_str(), "0" | "default" | "lil buddy" | "default lil buddy") {
         let mut next = settings.clone();
         next.telegram_active_expert_id = Some("default-lil-buddy".to_string());
         next.telegram_active_expert_name = Some("Lil Buddy".to_string());

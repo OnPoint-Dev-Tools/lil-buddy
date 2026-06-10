@@ -665,6 +665,7 @@ button.lm-small-card {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding-top: 8px;
 }
 
 .lm-chat-bubble {
@@ -3596,7 +3597,7 @@ textarea.lm-input {
 
 .lm-folder-pill {
   height: 46px;
-  max-width: 96px;
+  max-width: 160px;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: rgba(255,255,255,0.62);
@@ -3640,6 +3641,17 @@ textarea.lm-input {
 
 .lm-bottom-menu-wrap {
   position: relative;
+}
+
+.lm-bottom-menu-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.lm-bottom-menu-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .lm-bottom-menu-popover {
@@ -3899,11 +3911,13 @@ textarea.lm-input {
   text-align: left;
   color: var(--text);
   cursor: pointer;
+  appearance: none;
 }
 
 .lm-character-picker-grid button.active {
-  border-color: rgba(217,139,20,0.52);
-  background: rgba(217,139,20,0.14);
+  border-color: var(--accent) !important;
+  background: var(--accent-soft) !important;
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .lm-character-picker-grid img {
@@ -5679,4 +5693,13 @@ body { background: transparent !important; }
 :root[data-theme-accent="charcoal"] .lm-settings-overlay input::placeholder,
 :root[data-theme-accent="charcoal"] .lm-settings-overlay textarea::placeholder {
   color: rgba(243, 234, 220, 0.55) !important;
+}
+
+.lm-toast-enter {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-8px);
+}
+.lm-toast-active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }

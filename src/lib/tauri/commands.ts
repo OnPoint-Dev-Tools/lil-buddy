@@ -245,12 +245,22 @@ export async function detectProviders(): Promise<ProviderStatus[]> {
   return invoke<ProviderStatus[]>('detect_providers');
 }
 
-export async function previewProviderCommand(providerId: string, prompt: string) {
-  return invoke<string>('preview_provider_command', { providerId, prompt });
+export async function previewProviderCommand(
+  providerId: string,
+  prompt: string,
+  workspacePath?: string,
+  sessionId?: string,
+) {
+  return invoke<string>('preview_provider_command', { providerId, prompt, workspacePath, sessionId });
 }
 
-export async function runProviderCommand(providerId: string, prompt: string) {
-  return invoke('run_provider_command', { providerId, prompt });
+export async function runProviderCommand(
+  providerId: string,
+  prompt: string,
+  workspacePath?: string,
+  sessionId?: string,
+) {
+  return invoke('run_provider_command', { providerId, prompt, workspacePath, sessionId });
 }
 
 export async function stopProviderCommand() {

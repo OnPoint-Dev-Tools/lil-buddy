@@ -4,8 +4,8 @@ use tauri::AppHandle;
 use crate::{
     native_companion_manager,
     providers::unified_cli::{
-        self, build_invocation, command_exists, command_version, provider_auth_status,
-        AiCliContext, UnifiedCliRunner,
+        self, build_invocation, command_exists, command_output, command_version,
+        provider_auth_status, AiCliContext, UnifiedCliRunner,
     },
     settings,
 };
@@ -75,14 +75,35 @@ pub fn detect_providers(app: AppHandle) -> Vec<ProviderStatus> {
         .collect()
 }
 
+fn apply_workspace_override(context: &mut AiCliContext, workspace_path: Option<String>) {
+    if let Some(path) = workspace_path {
+        let trimmed = path.trim();
+        context.workspace_path = if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        };
+    }
+}
+
+fn apply_session_override(context: &mut AiCliContext, session_id: Option<String>) {
+    if let Some(id) = session_id.filter(|value| !value.trim().is_empty()) {
+        context.session_id = Some(id.trim().to_string());
+    }
+}
+
 #[tauri::command]
 pub fn preview_provider_command(
     app: AppHandle,
     provider_id: String,
     prompt: String,
+    workspace_path: Option<String>,
+    session_id: Option<String>,
 ) -> Result<String, String> {
     let settings = settings::load_settings(&app);
-    let context = AiCliContext::from_settings(prompt, &settings);
+    let mut context = AiCliContext::from_settings(prompt, &settings);
+    apply_workspace_override(&mut context, workspace_path);
+    apply_session_override(&mut context, session_id);
     let invocation = build_invocation(&provider_id, &context)?;
     Ok(invocation.preview)
 }
@@ -92,10 +113,18 @@ pub fn run_provider_command(
     app: AppHandle,
     provider_id: String,
     prompt: String,
+    workspace_path: Option<String>,
+    session_id: Option<String>,
 ) -> Result<(), String> {
     let _ = native_companion_manager::set_category(&app, "work");
-    let settings = settings::load_settings(&app);
-    let context = AiCliContext::from_settings(prompt, &settings);
+    let mut settings = settings::load_settings(&app);
+    let mut context = AiCliContext::from_settings(prompt, &settings);
+    apply_workspace_override(&mut context, workspace_path);
+    apply_session_override(&mut context, session_id);
+    if context.workspace_path != settings.workspace_path {
+        settings.workspace_path = context.workspace_path.clone();
+        let _ = settings::save_settings(&app, &settings);
+    }
     let safe_provider = match provider_id.as_str() {
         "claude" | "opencode-go" => provider_id,
         _ => "opencode-go".to_string(),
@@ -156,20 +185,8 @@ fn list_opencode_models(command: &str, refresh: bool) -> Vec<ProviderModel> {
     fallback_opencode_models()
 }
 
-#[cfg(target_os = "windows")]
 fn opencode_models_output(command: &str, args: &[String]) -> std::io::Result<std::process::Output> {
-    let mut parts = Vec::with_capacity(args.len() + 1);
-    parts.push(command.to_string());
-    parts.extend(args.iter().cloned());
-
-    std::process::Command::new("cmd")
-        .args(["/C", &parts.join(" ")])
-        .output()
-}
-
-#[cfg(not(target_os = "windows"))]
-fn opencode_models_output(command: &str, args: &[String]) -> std::io::Result<std::process::Output> {
-    std::process::Command::new(command).args(args).output()
+    command_output(command, args)
 }
 
 fn parse_opencode_models(output: &str) -> Vec<ProviderModel> {

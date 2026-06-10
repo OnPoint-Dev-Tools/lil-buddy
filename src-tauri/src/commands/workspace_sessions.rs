@@ -106,6 +106,57 @@ pub fn load_workspace_session(app: AppHandle, id: String) -> Result<Option<Works
 }
 
 #[tauri::command]
+pub fn get_workspace_session(
+    app: AppHandle,
+    workspace_path: String,
+    expert_name: String,
+) -> Result<Option<WorkspaceSession>, String> {
+    let _ = expert_name;
+    let store = load_store(&app)?;
+    Ok(store.sessions.into_iter().find(|session| session.id == workspace_path || session.path == workspace_path))
+}
+
+#[tauri::command]
+pub fn sync_workspace_session(
+    app: AppHandle,
+    workspace_path: String,
+    expert_name: String,
+    messages: Vec<Value>,
+) -> Result<WorkspaceSession, String> {
+    if workspace_path.trim().is_empty() {
+        return Err("workspace path is empty".to_string());
+    }
+
+    let mut store = load_store(&app)?;
+    let path = workspace_path.trim().to_string();
+    let existing_name = store
+        .sessions
+        .iter()
+        .find(|session| session.id == path || session.path == path)
+        .map(|session| session.name.clone());
+    let fallback_name = if expert_name.trim().is_empty() {
+        workspace_name_from_path(&path)
+    } else {
+        format!("{} · {}", workspace_name_from_path(&path), expert_name.trim())
+    };
+    let session = WorkspaceSession {
+        id: path.clone(),
+        name: existing_name.unwrap_or(fallback_name),
+        path: path.clone(),
+        messages: Value::Array(messages),
+        updated_at: now_ms(),
+    };
+
+    store.sessions.retain(|item| item.id != session.id && item.path != session.path);
+    store.sessions.insert(0, session.clone());
+    store.sessions.truncate(30);
+
+    save_store(&app, &store)?;
+
+    Ok(session)
+}
+
+#[tauri::command]
 pub fn delete_workspace_session(app: AppHandle, id: String) -> Result<(), String> {
     let mut store = load_store(&app)?;
     store.sessions.retain(|session| session.id != id);

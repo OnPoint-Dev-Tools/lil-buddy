@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
   hideChatWindow,
@@ -63,6 +64,7 @@ type ExpertChatSession = {
   messages: StreamLine[];
   createdAt: number;
   updatedAt: number;
+  cliSessionId?: string;
 };
 
 const EXPERT_SESSIONS_KEY = 'lil-buddy-expert-chat-sessions-v1';
@@ -86,6 +88,11 @@ function expertSessionOwner(expert: LilExpert | null) {
 function expertSessionTitle(expert: LilExpert | null, index: number) {
   const base = expert?.name ?? 'Lil Buddy';
   return `${base} Chat ${index}`;
+}
+
+function generateCliSessionId(expert: LilExpert | null, timestamp: number): string {
+  const expertPart = expert?.id || 'default';
+  return `lb-${expertPart}-${timestamp}`;
 }
 
 function loadExpertSessionStore(): Record<string, ExpertChatSession[]> {
@@ -156,7 +163,16 @@ function makeExpertSession(expert: LilExpert | null, messages: StreamLine[], ind
     messages,
     createdAt: now,
     updatedAt: now,
+    cliSessionId: generateCliSessionId(expert, now),
   };
+}
+
+function backfillSessionCliIds(expert: LilExpert | null, sessions: ExpertChatSession[]) {
+  return sessions.map((session) => (
+    session.cliSessionId
+      ? session
+      : { ...session, cliSessionId: generateCliSessionId(expert, session.createdAt) }
+  ));
 }
 
 function renumberExpertSessions(expert: LilExpert | null, sessions: ExpertChatSession[]) {
@@ -199,6 +215,8 @@ export function ChatWindow() {
   const [bottomMenuOpen, setBottomMenuOpen] = useState(false);
   const bottomMenuRef = useRef<HTMLDivElement | null>(null);
   const messageScrollRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const historyInjectedRef = useRef(false);
 
 
   const {
@@ -232,7 +250,6 @@ export function ChatWindow() {
     setMessages,
     clearMessages,
     setRunning,
-    seedBoot,
   } = useAppStore();
 
   useEffect(() => {
@@ -245,8 +262,15 @@ export function ChatWindow() {
   }, []);
 
   useEffect(() => {
-    if (messages.length === 0) seedBoot();
-  }, [messages.length, seedBoot]);
+    const container = messageScrollRef.current;
+    if (!container) return;
+
+    requestAnimationFrame(() => {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    });
+  }, [messages, activeSessionId]);
+
+
 
   useEffect(() => {
     const workspacePath = expertWorkspacePath(activeExpert);
@@ -298,10 +322,10 @@ export function ChatWindow() {
     const trimmed = (name ?? '').trim();
 
     if (trimmed) {
-      return `Hey ${trimmed}, I’m Lil Buddy. I’m ready to inspect your repo, explain files, run safe checks, and keep you updated while I work.`;
+      return `Hey ${trimmed}, I’m Lil Buddy. I’m ready to help you plan, organize ideas, explain files, or what ever you want 😁 and keep you updated while I work.`;
     }
 
-    return 'Hey, I’m Lil Buddy. I’m ready to inspect your repo, explain files, run safe checks, and keep you updated while I work.';
+    return 'Hey, I’m Lil Buddy. I’m ready to help you plan, organize ideas, explain files, or what ever you want 😁 and keep you updated while I work.';
   }
 
   function expertBootMessages(expert: LilExpert) {
@@ -329,6 +353,50 @@ export function ChatWindow() {
     ];
   }
 
+  function backendMessageSnapshot(sourceMessages: StreamLine[]) {
+    return sourceMessages.map((message) => ({
+      type: message.kind === 'user-message' ? 'user' : message.kind,
+      content: message.text,
+      timestamp: Number(message.ts) || Date.now(),
+    }));
+  }
+
+  function coerceBackendSessionMessages(value: unknown): StreamLine[] {
+    if (!Array.isArray(value)) return [];
+
+    return value
+      .map((item): StreamLine | null => {
+        if (!item || typeof item !== 'object') return null;
+        const candidate = item as { kind?: unknown; type?: unknown; text?: unknown; content?: unknown; ts?: unknown; timestamp?: unknown };
+        const rawKind = String(candidate.kind ?? candidate.type ?? '').trim();
+        const kind = rawKind === 'user' ? 'user-message' : rawKind;
+        if (kind !== 'user-message' && kind !== 'assistant' && kind !== 'status' && kind !== 'stdout' && kind !== 'stderr') return null;
+        const content = candidate.text ?? candidate.content ?? '';
+        const text = typeof content === 'string' ? content : JSON.stringify(content);
+        return {
+          kind: kind as StreamLine['kind'],
+          text,
+          ts: String(candidate.ts ?? candidate.timestamp ?? Date.now()),
+        };
+      })
+      .filter((message): message is StreamLine => Boolean(message));
+  }
+
+  async function loadBackendSessionMessages(expert: LilExpert | null) {
+    const expertPath = expertWorkspacePath(expert);
+    if (!expertPath) return [];
+
+    try {
+      const backendSession = await invoke<{ messages?: unknown } | null>('get_workspace_session', {
+        workspacePath: expertPath,
+        expertName: expert?.name ?? 'Lil Buddy',
+      });
+      return coerceBackendSessionMessages(backendSession?.messages);
+    } catch {
+      return [];
+    }
+  }
+
   useEffect(() => {
     loadSettings()
       .then((settings) => {
@@ -343,12 +411,13 @@ export function ChatWindow() {
         setOnboardingOpen(!settings.onboarding_complete || !nextUserName);
         applyThemeAccent(settings.theme_accent);
 
-        if (messages.length === 0) {
-          loadSessionsForExpert(activeExpert, nextUserName);
-        }
+        loadSessionsForExpert(activeExpert, nextUserName);
 
         const expertPath = expertWorkspacePath(activeExpert);
         setWorkspacePathDraft(expertPath);
+        if (expertPath) {
+          saveWorkspacePath(expertPath).catch(() => {});
+        }
         // Do not auto-run workspace detection/diff on app boot.
         // Workspace detection is now explicit only: user chooses/refreshes workspace.
       })
@@ -356,14 +425,19 @@ export function ChatWindow() {
   }, [setMessages, setOpenCodeGoMode, setSelectedProvider, setWorkspacePathDraft]);
 
 
-  function loadSessionsForExpert(expert: LilExpert | null, name = userName) {
+  async function loadSessionsForExpert(expert: LilExpert | null, name = userName) {
     const owner = expertSessionOwner(expert);
     const store = loadExpertSessionStore();
     const activeMap = loadActiveExpertSessionMap();
-    let sessions = renumberExpertSessions(expert, coerceExpertSessions(store[owner]));
+    let sessions = backfillSessionCliIds(expert, renumberExpertSessions(expert, coerceExpertSessions(store[owner])));
 
     if (sessions.length === 0) {
-      const created = makeExpertSession(expert, expert ? expertBootMessages(expert) : bootMessages(name), 1);
+      const backendMessages = await loadBackendSessionMessages(expert);
+      const created = makeExpertSession(
+        expert,
+        backendMessages.length > 0 ? backendMessages : expert ? expertBootMessages(expert) : bootMessages(name),
+        1,
+      );
       sessions = [created];
       store[owner] = sessions;
       saveExpertSessionStore(store);
@@ -382,9 +456,10 @@ export function ChatWindow() {
     setChatSessions(sessions);
     setActiveSessionId(activeSession.id);
     setMessages(activeSession.messages);
+    historyInjectedRef.current = false;
   }
 
-  function persistActiveSession(nextMessages = messages) {
+  function persistActiveSession(nextMessages = messages, updateState = true) {
     if (!activeSessionId || deletedSessionIds.has(activeSessionId)) return;
 
     const owner = expertSessionOwner(activeExpert);
@@ -400,7 +475,7 @@ export function ChatWindow() {
 
     store[owner] = nextSessions;
     saveExpertSessionStore(store);
-    setChatSessions(nextSessions);
+    if (updateState) setChatSessions(nextSessions);
   }
 
 
@@ -409,6 +484,14 @@ export function ChatWindow() {
 
     const timeout = window.setTimeout(() => {
       persistActiveSession(messages);
+
+      if (workspacePathDraft) {
+        invoke('sync_workspace_session', {
+          workspacePath: workspacePathDraft,
+          expertName: activeExpert?.name ?? 'Lil Buddy',
+          messages: backendMessageSnapshot(messages),
+        }).catch(() => {});
+      }
     }, 500);
 
     return () => window.clearTimeout(timeout);
@@ -430,27 +513,31 @@ export function ChatWindow() {
 
     setActiveSessionId(session.id);
     setMessages(session.messages);
+    historyInjectedRef.current = false;
   }
 
   function createChatSession() {
-    persistActiveSession(messages);
+    persistActiveSession(messages, false);
 
     const owner = expertSessionOwner(activeExpert);
     const store = loadExpertSessionStore();
     const sessions = coerceExpertSessions(store[owner]);
-    const nextSession = makeExpertSession(activeExpert, activeExpert ? expertBootMessages(activeExpert) : bootMessages(userName), sessions.length + 1);
+    const freshMessages = activeExpert ? expertBootMessages(activeExpert) : bootMessages(userName);
+    const nextSession = makeExpertSession(activeExpert, freshMessages, sessions.length + 1);
     const nextSessions = renumberExpertSessions(activeExpert, [...sessions, nextSession]);
+    const activeSession = nextSessions.find((session) => session.id === nextSession.id) ?? nextSession;
 
     store[owner] = nextSessions;
     saveExpertSessionStore(store);
 
     const activeMap = loadActiveExpertSessionMap();
-    activeMap[owner] = nextSession.id;
+    activeMap[owner] = activeSession.id;
     saveActiveExpertSessionMap(activeMap);
 
     setChatSessions(nextSessions);
-    setActiveSessionId(nextSession.id);
-    setMessages(nextSession.messages);
+    setActiveSessionId(activeSession.id);
+    setMessages([...activeSession.messages]);
+    historyInjectedRef.current = false;
   }
 
   function deleteChatSession(sessionId: string) {
@@ -587,16 +674,22 @@ export function ChatWindow() {
       const owner = expertSessionOwner(expert);
       const store = loadExpertSessionStore();
       const activeMap = loadActiveExpertSessionMap();
-      let sessions = renumberExpertSessions(expert, coerceExpertSessions(store[owner]));
+      let sessions = backfillSessionCliIds(expert, renumberExpertSessions(expert, coerceExpertSessions(store[owner])));
 
       if (sessions.length === 0) {
-        const created = makeExpertSession(expert, expert ? expertBootMessages(expert) : bootMessages(userName), 1);
+        const backendMessages = await loadBackendSessionMessages(expert);
+        const created = makeExpertSession(
+          expert,
+          backendMessages.length > 0 ? backendMessages : expert ? expertBootMessages(expert) : bootMessages(userName),
+          1,
+        );
         sessions = [created];
-        store[owner] = sessions;
         activeMap[owner] = created.id;
-        saveExpertSessionStore(store);
         saveActiveExpertSessionMap(activeMap);
       }
+
+      store[owner] = sessions;
+      saveExpertSessionStore(store);
 
       const activeId = sessions.some((session) => session.id === activeMap[owner])
         ? activeMap[owner]
@@ -604,11 +697,15 @@ export function ChatWindow() {
       const activeSession = sessions.find((session) => session.id === activeId) ?? sessions[0];
 
       const expertPath = expertWorkspacePath(expert);
+      if (expertPath) {
+        await saveWorkspacePath(expertPath).catch(() => {});
+      }
 
       setActiveExpert(expert);
       setChatSessions(sessions);
       setActiveSessionId(activeSession.id);
       setMessages(activeSession.messages);
+      historyInjectedRef.current = false;
       setWorkspacePathDraft(expertPath);
 
       // Do not auto-run workspace detection/diff while switching experts.
@@ -737,6 +834,42 @@ export function ChatWindow() {
   }
 
 
+  function serializeHistoryContent(value: unknown) {
+    if (typeof value === 'string') return value;
+
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  function historyRole(message: StreamLine) {
+    const candidate = message as StreamLine & { type?: string };
+
+    if (candidate.kind === 'user-message' || candidate.type === 'user') return 'User';
+    if (candidate.kind === 'assistant' || candidate.type === 'assistant') return 'Assistant';
+    return null;
+  }
+
+  function buildHistoryContext(sourceMessages: StreamLine[]) {
+    const historyLines = sourceMessages
+      .filter((message) => historyRole(message) !== null)
+      .slice(-20)
+      .map((message) => {
+        const candidate = message as StreamLine & { content?: unknown };
+        const role = historyRole(message);
+        const content = serializeHistoryContent(candidate.content ?? candidate.text);
+        return role && content ? `${role}: ${content}` : null;
+      })
+      .filter((line): line is string => Boolean(line))
+      .join('\n\n');
+
+    return historyLines
+      ? `\n\n## Previous Conversation Context\nThe following is the recent conversation history. Use this context to maintain continuity:\n\n${historyLines}\n\n`
+      : '';
+  }
+
   function extractPromptCommand(value: string) {
     const fenced = value.match(/```(?:bash|sh|zsh)?\n([\s\S]*?)```/i);
     if (fenced?.[1]) return fenced[1].trim();
@@ -767,9 +900,18 @@ export function ChatWindow() {
     setRunning(true);
     setNativeCompanionCategory('work').catch(() => {});
     setPrompt('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     setAdvancedOpen(false);
 
     const startedAt = Date.now();
+
+    let historyContext = '';
+    if (!historyInjectedRef.current) {
+      historyContext = buildHistoryContext(messages);
+      historyInjectedRef.current = true;
+    }
 
     pushMessage({
       kind: 'user-message',
@@ -779,11 +921,17 @@ export function ChatWindow() {
 
 
     try {
-      const providerPrompt = `${expertPromptPrefix(activeExpert)}${trimmed}`;
-      const preview = await previewProviderCommand(provider, providerPrompt);
+      await saveWorkspacePath(workspacePathDraft || '');
+
+      const providerPrompt = `${expertPromptPrefix(activeExpert)}${historyContext}Current request: ${trimmed}`;
+      const activeSession = chatSessions.find((session) => session.id === activeSessionId);
+      const hasExistingUserMessages = messages.some((msg) => msg.kind === 'user-message');
+      const sessionId = hasExistingUserMessages ? activeSession?.cliSessionId : undefined;
+      const commandWorkspacePath = workspacePathDraft || workspace?.path || undefined;
+      const preview = await previewProviderCommand(provider, providerPrompt, commandWorkspacePath, sessionId);
       setCommandPreview(preview);
 
-      await runProviderCommand(provider, providerPrompt);
+      await runProviderCommand(provider, providerPrompt, commandWorkspacePath, sessionId);
     } catch (error) {
       setRunning(false);
       pushMessage({
@@ -1030,7 +1178,6 @@ export function ChatWindow() {
                 title={session.title}
               >
                 <span>{session.title}</span>
-                <small>{session.messages.length}</small>
                 <button
                   type="button"
                   className="lm-chat-session-close"
@@ -1072,12 +1219,12 @@ export function ChatWindow() {
         />
 
           <button
-            className={workspace?.path ? 'lm-folder-pill has-workspace' : 'lm-folder-pill'}
+            className={workspacePathDraft ? 'lm-folder-pill has-workspace' : 'lm-folder-pill'}
             onClick={chooseWorkspace}
-            title={workspace?.path ? `Workspace: ${workspace.path}` : 'Choose workspace folder'}
+            title={workspacePathDraft ? `Workspace: ${workspacePathDraft}` : 'Choose workspace folder'}
           >
             <span><Paperclip /></span>
-            <strong>{workspace?.path ? workspace.path.split('/').filter(Boolean).slice(-1)[0] : 'Folder'}</strong>
+            <strong>{workspacePathDraft ? workspacePathDraft.split('/').filter(Boolean).slice(-2).join('/') : ''}</strong>
           </button>
 
           <div className="lm-bottom-menu-wrap" ref={bottomMenuRef}>
@@ -1133,6 +1280,7 @@ export function ChatWindow() {
           </div>
 
           <textarea
+            ref={textareaRef}
             className="lm-input lm-chat-textarea"
             value={prompt}
             rows={1}

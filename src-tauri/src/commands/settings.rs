@@ -66,7 +66,12 @@ pub fn save_opencode_go_mode(app: AppHandle, mode: String) -> Result<(), String>
 #[tauri::command]
 pub fn save_opencode_command(app: AppHandle, command: String) -> Result<(), String> {
     let mut settings = load_app_settings(&app);
-    settings.opencode_command = command;
+    let trimmed = command.trim();
+    settings.opencode_command = if trimmed.is_empty() {
+        "opencode".to_string()
+    } else {
+        trimmed.to_string()
+    };
     save_settings(&app, &settings)
 }
 

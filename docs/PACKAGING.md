@@ -156,27 +156,3 @@ After building, generate checksums from the folder where you collect release fil
 ```bash
 sha256sum * > SHA256SUMS.txt
 ```
-
-## Signing
-
-Unsigned Developer Preview builds are acceptable for early testers, but signed builds are better for trust.
-
-- Windows: code signing reduces SmartScreen friction.
-- macOS: signing and notarization reduce Gatekeeper friction.
-- Linux: publish checksums first; package repository signing can come later.
-
-See `docs/CODE_SIGNING_NOTES.md`.
-
-## Release wording
-
-Suggested GitHub Release title:
-
-```txt
-Lil Buddy v0.1.0 Developer Preview
-```
-
-Suggested warning:
-
-```txt
-This is an experimental Developer Preview. Unsigned builds may show operating system warnings. Please review the privacy and security notes before connecting providers, Telegram, or workspaces.
-```
