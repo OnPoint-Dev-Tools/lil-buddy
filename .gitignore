@@ -26,9 +26,9 @@ Thumbs.db
 .idea/
 plans.md
 ROADMAP.md
-# docs/POSITIONING.md
-# docs/RELEASE_CHECKLIST.md
-# docs/SAFETY_CHECKS.md
-# docs/CODE_SIGNING_NOTES.md
+docs/POSITIONING.md
+docs/RELEASE_CHECKLIST.md
+docs/SAFETY_CHECKS.md
+docs/CODE_SIGNING_NOTES.md
 .pi/
 bun.lock

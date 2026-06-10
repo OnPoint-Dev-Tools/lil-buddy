@@ -32,6 +32,30 @@
 
 ---
 
+## Demo
+
+<div align="center">
+
+<video src="docs/assets/intro.mp4" controls muted loop width="45%"></video>
+<video src="docs/assets/expert-switching.mp4" controls muted loop width="45%"></video>
+
+</div>
+
+## Screenshots
+
+<div align="center">
+
+<img src="src/assets/companions/red-beanie.png" alt="Lil buddy Companion" width="45%" />
+<img src="docs/assets/Screenshot_2026-06-10-17-10-21.png" alt="Expert switching" width="45%" />
+
+<img src="docs/assets/Screenshot_2026-05-26-10-14-14.png" alt="Settings and customization" width="45%" />
+<img src="docs/assets/Screenshot_2026-05-26-10-14-39.png" alt="Theme preferences" width="45%" />
+
+<img src="docs/assets/Screenshot_2026-05-26-10-15-11.png" alt="Workspace and providers" width="45%" />
+<img src="docs/assets/Screenshot_2026-05-26-10-15-35.png" alt="Companion character view" width="45%" />
+
+</div>
+
 ## What is Lil Buddy?
 
 **Lil Buddy** is a warm, local-first desktop AI helper built for people who want a personal assistant they can understand, customize, and run from their own machine.
@@ -61,21 +85,6 @@ It is not mainly a coding app. Coding help is one ability. Lil Buddy is meant to
 - Telegram gateway support
 - System tray controls
 - Planning, writing, searching, light coding, and everyday helper workflows
-
-## Screenshots
-
-<div align="center">
-
-<img src="docs/assets/Screenshot_2026-05-26-10-12-19.png" alt="Chat interface" width="45%" />
-<img src="docs/assets/Screenshot_2026-05-26-10-12-24.png" alt="Expert switching" width="45%" />
-
-<img src="docs/assets/Screenshot_2026-05-26-10-14-14.png" alt="Settings and customization" width="45%" />
-<img src="docs/assets/Screenshot_2026-05-26-10-14-39.png" alt="Theme preferences" width="45%" />
-
-<img src="docs/assets/Screenshot_2026-05-26-10-15-11.png" alt="Workspace and providers" width="45%" />
-<img src="docs/assets/Screenshot_2026-05-26-10-15-35.png" alt="Companion character view" width="45%" />
-
-</div>
 
 ## Why local-first?
 

@@ -50,4 +50,4 @@
 - [x] FUNDING placeholders updated
 - [x] Issue templates added
 - [x] Screenshots added
-- [ ] Demo GIF/video added
+- [x] Demo GIF/video added
