@@ -1,9 +1,3 @@
-<p align="center">
-
-  <img src="docs/assets/lil-buddy-logo.png" alt="Lil Buddy Logo" width="380" />
-
-</p>
-
 <h1 align="center">Lil Buddy</h1>
 
 <p align="center">
@@ -36,8 +30,8 @@
 
 <div align="center">
 
-<video src="docs/assets/intro.mp4" controls muted loop width="45%"></video>
-<video src="docs/assets/expert-switching.mp4" controls muted loop width="45%"></video>
+<img src="docs/assets/intro.gif" alt="Lil Buddy intro" width="45%" />
+<img src="docs/assets/expert-switching.gif" alt="Expert switching" width="45%" />
 
 </div>
 
@@ -48,11 +42,11 @@
 <img src="src/assets/companions/red-beanie.png" alt="Lil buddy Companion" width="45%" />
 <img src="docs/assets/Screenshot_2026-06-10-17-10-21.png" alt="Expert switching" width="45%" />
 
+<img src="docs/assets/Screenshot_2026-05-26-10-15-35.png" alt="Theming" width="45%" />
 <img src="docs/assets/Screenshot_2026-05-26-10-14-14.png" alt="Settings and customization" width="45%" />
-<img src="docs/assets/Screenshot_2026-05-26-10-14-39.png" alt="Theme preferences" width="45%" />
+<img src="docs/assets/Screenshot_2026-05-26-10-14-39.png" alt="Pick Companions" width="45%" />
 
 <img src="docs/assets/Screenshot_2026-05-26-10-15-11.png" alt="Workspace and providers" width="45%" />
-<img src="docs/assets/Screenshot_2026-05-26-10-15-35.png" alt="Companion character view" width="45%" />
 
 </div>
 
