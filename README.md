@@ -42,13 +42,12 @@
 <div align="center">
 
 <img src="src/assets/companions/red-beanie.png" alt="Lil buddy Companion" width="45%" />
-<img src="docs/assets/Screenshot_2026-06-10-17-10-21.png" alt="Expert switching" width="45%" />
+<img src="docs/assets/Screenshot_2026-06-10-23-56-58.png" alt="Expert switching" width="45%" />
 
-<img src="docs/assets/Screenshot_2026-05-26-10-15-35.png" alt="Theming" width="45%" />
 <img src="docs/assets/Screenshot_2026-05-26-10-14-14.png" alt="Settings and customization" width="45%" />
-<img src="docs/assets/Screenshot_2026-05-26-10-14-39.png" alt="Pick Companions" width="45%" />
-
 <img src="docs/assets/Screenshot_2026-05-26-10-15-11.png" alt="Workspace and providers" width="45%" />
+
+<img src="docs/assets/Screenshot_2026-05-26-10-14-39.png" alt="Pick Companions" width="45%" />
 
 </div>
 
