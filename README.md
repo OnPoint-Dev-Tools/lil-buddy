@@ -98,16 +98,6 @@ Please expect:
 - changing settings and storage formats
 - incomplete documentation
 
-## Licensing
-
-The source code is licensed under MIT. See `LICENSE`.
-
-The Lil Buddy logo, companion art, animation assets, premium packs, screenshots, and brand identity are covered separately. See `ASSET_LICENSE.md`.
-
-## Safety note
-
-Lil Buddy can connect to local CLI tools and workspaces. Review commands carefully and avoid giving it access to sensitive folders until you understand how your provider and workspace settings are configured.
-
 ## Getting started
 
 ```bash
@@ -139,15 +129,48 @@ npm run tauri:wayland-safe
 npm run tauri:x11
 ```
 
+linux/hyprland:
+
+```env
+env = LIBVA_DRIVER_NAME,nvidia
+env = GBM_BACKEND,nvidia-drm
+env = __GLX_VENDOR_LIBRARY_NAME,nvidia
+env = WLR_NO_HARDWARE_CURSORS,1
+
+env = WEBKIT_DISABLE_DMABUF_RENDERER,1
+```
+
+```rules.conf
+// Native companion / pet
+windowrule = match:title ^(Lil Buddy Native Companion)$, float on
+windowrule = match:title ^(Lil Buddy Native Companion)$, no_blur on
+windowrule = match:title ^(Lil Buddy Native Companion)$, border_size 0
+windowrule = match:title ^(Lil Buddy Native Companion)$, no_shadow on
+windowrule = match:title ^(Lil Buddy Native Companion)$, pin on
+
+// Chat window
+windowrule = match:title ^(Lil Buddy)$, float on
+windowrule = match:title ^(Lil Buddy)$, border_size 0
+windowrule = match:title ^(Lil Buddy)$, no_blur on
+windowrule = match:title ^(Lil Buddy)$, no_shadow on
+windowrule = match:title ^(Lil Buddy)$, no_initial_focus on
+```
+
+## Licensing
+
+The source code is licensed under MIT. See `LICENSE`.
+
+The Lil Buddy logo, companion art, animation assets, premium packs, screenshots, and brand identity are covered separately. See `ASSET_LICENSE.md`.
+
+## Safety note
+
+Lil Buddy can connect to local CLI tools and workspaces. Review commands carefully and avoid giving it access to sensitive folders until you understand how your provider and workspace settings are configured.
+
 ## Support the project
 
 If Lil Buddy helps you, consider supporting development through GitHub Sponsors, Ko-fi, or Patreon once those links are added.
 
 See `.github/FUNDING.yml`.
-
-## Roadmap
-
-See `ROADMAP.md`.
 
 ## Contributing
 
